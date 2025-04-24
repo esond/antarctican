@@ -9,8 +9,8 @@ services:
       - WEBUI_PORT=${QBITTORRENT_WEBUI_PORT}
       - TORRENTING_PORT=${QBITTORRENT_TORRENTING_PORT}
     volumes:
-      - /mnt/user/appdata/qbittorrent:/config
-      - /mnt/user/data/torrents:/data/torrents
+      - ${APPDATA}/qbittorrent:/config
+      - ${DATA}/torrents:/data/torrents
     ports:
       - "${QBITTORRENT_WEBUI_PORT}:${QBITTORRENT_WEBUI_PORT}"
       - "${QBITTORRENT_TORRENTING_PORT}:${QBITTORRENT_TORRENTING_PORT}"
@@ -27,8 +27,8 @@ services:
       - PGID=${PGID}
       - TZ=${TZ}
     volumes:
-      - /mnt/user/appdata/sonarr:/config
-      - /mnt/user/data:/data
+      - ${APPDATA}/sonarr:/config
+      - ${DATA}:/data
     ports:
       - 8989:8989
     restart: unless-stopped
@@ -43,8 +43,8 @@ services:
       - PGID=${PGID}
       - TZ=${TZ}
     volumes:
-      - /mnt/user/appdata/radarr:/config
-      - /mnt/user/data:/data
+      - ${APPDATA}/radarr:/config
+      - ${DATA}:/data
     ports:
       - 7878:7878
     restart: unless-stopped
@@ -60,9 +60,9 @@ services:
   #     - VERSION=${PLEX_VERSION}
   #     - TZ=${TZ}
   #   volumes:
-  #     - /mnt/user/appdata/plex:/config
+  #     - ${APPDATA}/plex:/config
   #     - /tmp:/transcode
-  #     - /mnt/user/data/media:/data/media
+  #     - ${DATA}/media:/data/media
   #   ports:
   #     - 32400:32400
   #   restart: unless-stopped
@@ -78,7 +78,7 @@ services:
       - TZ=${TZ}
       - AUTO_UPDATE=${JACKETT_AUTO_UPDATE}
     volumes:
-      - /mnt/user/appdata/jackett:/config
+      - ${APPDATA}/jackett:/config
     ports:
       - 9117:9117
     restart: unless-stopped
@@ -93,6 +93,23 @@ services:
       - TZ=${TZ}
     ports:
       - 8191:8191
+    restart: unless-stopped
+    networks:
+      - media-net
+
+  notifiarr:
+    container_name: notifiarr
+    image: golift/notifiarr:latest
+    environment:
+      - PUID=${PUID}
+      - PGID=${PGID}
+      - TZ=${TZ}
+    volumes:
+      - ${APPDATA}/notifiarr:/config
+      - /var/run/utmp:/var/run/utmp
+      - /etc/machine-id:/etc/machine-id
+    ports:
+      - 5454:5454
     restart: unless-stopped
     networks:
       - media-net
