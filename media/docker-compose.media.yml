@@ -1,6 +1,6 @@
 services:
   qbittorrent:
-    image: linuxserver/qbittorrent:latest
+    image: lscr.io/linuxserver/qbittorrent:latest
     container_name: qbittorrent
     environment:
       - PUID=${PUID}
@@ -20,7 +20,7 @@ services:
       - media-net
 
   sonarr:
-    image: linuxserver/sonarr:latest
+    image: lscr.io/linuxserver/sonarr:latest
     container_name: sonarr
     environment:
       - PUID=${PUID}
@@ -36,7 +36,7 @@ services:
       - media-net
 
   radarr:
-    image: linuxserver/radarr:latest
+    image: lscr.io/linuxserver/radarr:latest
     container_name: radarr
     environment:
       - PUID=${PUID}
@@ -51,26 +51,8 @@ services:
     networks:
       - media-net
 
-  # plex:
-  #   image: plexinc/pms-docker:latest
-  #   container_name: plex
-  #   environment:
-  #     - PUID=${PUID}
-  #     - PGID=${PGID}
-  #     - VERSION=${PLEX_VERSION}
-  #     - TZ=${TZ}
-  #   volumes:
-  #     - ${APPDATA}/plex:/config
-  #     - /tmp:/transcode
-  #     - ${DATA}/media:/data/media
-  #   ports:
-  #     - 32400:32400
-  #   restart: unless-stopped
-  #   networks:
-  #     - media-net
-
   jackett:
-    image: linuxserver/jackett:latest
+    image: lscr.io/linuxserver/jackett:latest
     container_name: jackett
     environment:
       - PUID=${PUID}
