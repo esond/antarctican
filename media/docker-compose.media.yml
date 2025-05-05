@@ -41,6 +41,7 @@ services:
       - "${JACKETT_HOST_PORT}:${JACKETT_HOST_PORT}"
       - "${FLARESOLVERR_HOST_PORT}:${FLARESOLVERR_HOST_PORT}"
       - "${NOTIFIARR_HOST_PORT}:${NOTIFIARR_HOST_PORT}"
+      - "${OVERSEERR_HOST_PORT}:${OVERSEERR_HOST_PORT}"
     networks:
       - media-net
 
@@ -118,5 +119,18 @@ services:
       - ${APPDATA}/notifiarr:/config
       - /var/run/utmp:/var/run/utmp
       - /etc/machine-id:/etc/machine-id
+    restart: unless-stopped
+    network_mode: "service:gluetun"
+
+  overseerr:
+    image: lscr.io/linuxserver/overseerr:latest
+    container_name: overseerr
+    environment:
+      - LOG_LEVEL=${OVERSEERR_LOG_LEVEL}
+      - PUID=${PUID}
+      - PGID=${PGID}
+      - TZ=${TZ}
+    volumes:
+      - ${APPDATA}/overseerr:/config
     restart: unless-stopped
     network_mode: "service:gluetun"
