@@ -100,10 +100,12 @@ services:
     network_mode: "service:gluetun"
 
   flaresolverr:
-    image: ghcr.io/flaresolverr/flaresolverr:latest
+    image: 21hsmw/flaresolverr:nodriver
     container_name: flaresolverr
     environment:
       - LOG_LEVEL=${FLARESOLVERR_LOG_LEVEL}
+      - PUID=${PUID}
+      - PGID=${PGID}
       - TZ=${TZ}
     restart: unless-stopped
     network_mode: "service:gluetun"
