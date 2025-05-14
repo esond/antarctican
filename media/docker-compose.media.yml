@@ -136,3 +136,19 @@ services:
       - ${APPDATA}/overseerr:/config
     restart: unless-stopped
     network_mode: "service:gluetun"
+
+  unpackerr:
+    image: golift/unpackerr
+    container_name: unpackerr
+    user: ${PUID}:${PGID}
+    environment:
+      - TZ=${TZ}
+      - UN_LOG_FILE=${UNPACKERR_LOG_FILE_PATH}
+      - UN_SONARR_0_URL=${UNPACKERR_SONARR_URL}
+      - UN_SONARR_0_API_KEY=${UNPACKERR_SONARR_API_KEY}
+      - UN_RADARR_0_URL=${UNPACKERR_RADARR_URL}
+      - UN_RADARR_0_API_KEY=${UNPACKERR_RADARR_API_KEY}
+    volumes:
+      - ${APPDATA}/unpackerr:/config
+      - ${DATA}/torrents:/data/torrents
+    restart: unless-stopped
