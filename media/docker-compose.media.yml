@@ -59,6 +59,8 @@ services:
       - ${DATA}/torrents:/data/torrents
     restart: unless-stopped
     network_mode: "service:gluetun"
+    depends_on:
+      - gluetun
 
   sonarr:
     image: lscr.io/linuxserver/sonarr:latest
@@ -72,6 +74,8 @@ services:
       - ${DATA}:/data
     restart: unless-stopped
     network_mode: "service:gluetun"
+    depends_on:
+      - gluetun
 
   radarr:
     image: lscr.io/linuxserver/radarr:latest
@@ -85,6 +89,8 @@ services:
       - ${DATA}:/data
     restart: unless-stopped
     network_mode: "service:gluetun"
+    depends_on:
+      - gluetun
 
   jackett:
     image: lscr.io/linuxserver/jackett:latest
@@ -98,6 +104,8 @@ services:
       - ${APPDATA}/jackett:/config
     restart: unless-stopped
     network_mode: "service:gluetun"
+    depends_on:
+      - gluetun
 
   flaresolverr:
     image: 21hsmw/flaresolverr:nodriver
@@ -109,6 +117,8 @@ services:
       - TZ=${TZ}
     restart: unless-stopped
     network_mode: "service:gluetun"
+    depends_on:
+      - gluetun
 
   notifiarr:
     container_name: notifiarr
@@ -123,6 +133,8 @@ services:
       - /etc/machine-id:/etc/machine-id
     restart: unless-stopped
     network_mode: "service:gluetun"
+    depends_on:
+      - gluetun
 
   overseerr:
     image: lscr.io/linuxserver/overseerr:latest
@@ -136,6 +148,8 @@ services:
       - ${APPDATA}/overseerr:/config
     restart: unless-stopped
     network_mode: "service:gluetun"
+    depends_on:
+      - gluetun
 
   unpackerr:
     image: golift/unpackerr
@@ -143,6 +157,8 @@ services:
     user: ${PUID}:${PGID}
     environment:
       - TZ=${TZ}
+      - PUID=${PUID}
+      - PGID=${PGID}
       - UN_LOG_FILE=${UNPACKERR_LOG_FILE_PATH}
       - UN_SONARR_0_URL=${UNPACKERR_SONARR_URL}
       - UN_SONARR_0_API_KEY=${UNPACKERR_SONARR_API_KEY}
