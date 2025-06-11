@@ -1,6 +1,8 @@
 networks:
   media-net:
     driver: bridge
+  gluetun-net:
+    external: true
 
 services:
   gluetun:
@@ -24,8 +26,9 @@ services:
       # - VPN_PORT_FORWARDING=on
       # VPN_PORT_FORWARDING_UP_COMMAND=/bin/sh -c 'wget -O- --retry-connrefused --post-data "json={\"listen_port\":{{PORTS}}}" http://127.0.0.1:${QBITTORRENT_WEBUI_PORT}/api/v2/app/setPreferences 2>&1'
       # - FIREWALL_VPN_INPUT_PORTS=${GLUETUN_VPN_INPUT_PORTS}
-      - UPDATE_PERIOD=24h
+      - UPDATE_PERIOD=${GLUETUN_UPDATE_PERIOD}
       - SHADOWSOCKS=off
+      - DNS_ADDRESS=127.0.0.11
     volumes:
       - ${APPDATA}/gluetun:/config
     ports:
@@ -42,6 +45,7 @@ services:
       - "${FLARESOLVERR_HOST_PORT}:${FLARESOLVERR_HOST_PORT}"
       - "${NOTIFIARR_HOST_PORT}:${NOTIFIARR_HOST_PORT}"
       - "${OVERSEERR_HOST_PORT}:${OVERSEERR_HOST_PORT}"
+    restart: unless-stopped
     networks:
       - media-net
 
@@ -60,7 +64,8 @@ services:
     restart: unless-stopped
     network_mode: "service:gluetun"
     depends_on:
-      - gluetun
+      gluetun:
+        condition: service_healthy
 
   sonarr:
     image: lscr.io/linuxserver/sonarr:latest
@@ -75,7 +80,8 @@ services:
     restart: unless-stopped
     network_mode: "service:gluetun"
     depends_on:
-      - gluetun
+      gluetun:
+        condition: service_healthy
 
   radarr:
     image: lscr.io/linuxserver/radarr:latest
@@ -90,7 +96,8 @@ services:
     restart: unless-stopped
     network_mode: "service:gluetun"
     depends_on:
-      - gluetun
+      gluetun:
+        condition: service_healthy
 
   jackett:
     image: lscr.io/linuxserver/jackett:latest
@@ -105,7 +112,8 @@ services:
     restart: unless-stopped
     network_mode: "service:gluetun"
     depends_on:
-      - gluetun
+      gluetun:
+        condition: service_healthy
 
   flaresolverr:
     image: 21hsmw/flaresolverr:nodriver
@@ -118,10 +126,12 @@ services:
     restart: unless-stopped
     network_mode: "service:gluetun"
     depends_on:
-      - gluetun
+      gluetun:
+        condition: service_healthy
 
   notifiarr:
     container_name: notifiarr
+    hostname: ${NOTIFIARR_HOSTNAME}
     image: golift/notifiarr:latest
     environment:
       - PUID=${PUID}
@@ -132,9 +142,8 @@ services:
       - /var/run/utmp:/var/run/utmp
       - /etc/machine-id:/etc/machine-id
     restart: unless-stopped
-    network_mode: "service:gluetun"
-    depends_on:
-      - gluetun
+    networks:
+      - media-net
 
   overseerr:
     image: lscr.io/linuxserver/overseerr:latest
@@ -149,7 +158,8 @@ services:
     restart: unless-stopped
     network_mode: "service:gluetun"
     depends_on:
-      - gluetun
+      gluetun:
+        condition: service_healthy
 
   unpackerr:
     image: golift/unpackerr
