@@ -1,0 +1,14 @@
+services:
+  urbackup:
+    image:  binhex/arch-urbackup:latest
+    container_name: urbackup
+    network_mode: host
+    environment:
+      - PUID=${PUID}
+      - PGID=${PGID}
+      - TZ=${TZ}
+    volumes:
+      - ${APPDATA}/urbackup:/config
+      - ${BACKUP}/urbackup:/media
+      - /etc/localtime:/etc/localtime:ro
+    restart: unless-stopped

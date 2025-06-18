@@ -3,7 +3,6 @@ networks:
     driver: bridge
 
 services:
-
   qbittorrentvpn:
     image: binhex/arch-qbittorrentvpn:latest
     container_name: qbittorrentvpn
