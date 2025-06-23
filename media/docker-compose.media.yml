@@ -129,6 +129,8 @@ services:
       - TZ=${TZ}
     volumes:
       - ${APPDATA}/overseerr:/config
+    ports:
+      - ${OVERSEERR_HOST_PORT}:5055
     restart: unless-stopped
     networks:
       - media-net
