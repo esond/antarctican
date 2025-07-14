@@ -38,6 +38,31 @@ services:
     restart: unless-stopped
     networks:
       - media-net
+
+  swag:
+    image: lscr.io/linuxserver/swag:latest
+    container_name: swag
+    cap_add:
+      - NET_ADMIN
+    environment:
+      - PUID=${PUID}
+      - PGID=${PGID}
+      - TZ=${TZ}
+      - URL=antarctican.tv
+      - VALIDATION=dns
+      - SUBDOMAINS=wildcard
+      - DNSPLUGIN=${SWAG_DNSPLUGIN}
+      - EMAIL=${SWAG_EMAIL}
+      - ONLY_SUBDOMAINS=${SWAG_ONLY_SUBDOMAINS}
+      - SWAG_AUTORELOAD=${SWAG_AUTORELOAD}
+    volumes:
+      - ${APPDATA}/swag:/config
+    ports:
+      - 443:443
+      - 80:80
+    restart: unless-stopped
+    networks:
+      - media-net
       
   sonarr:
     image: lscr.io/linuxserver/sonarr:latest
