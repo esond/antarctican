@@ -64,34 +64,66 @@ services:
     networks:
       - media-net
       
-  sonarr:
+  sonarr-uhd:
     image: lscr.io/linuxserver/sonarr:latest
-    container_name: sonarr
+    container_name: sonarr-uhd
     environment:
       - PUID=${PUID}
       - PGID=${PGID}
       - TZ=${TZ}
     volumes:
-      - ${APPDATA}/sonarr:/config
+      - ${APPDATA}/sonarr-uhd:/config
       - ${DATA}:/data
     ports:
-      - ${SONARR_HOST_PORT}:8989
+      - ${SONARR_UHD_HOST_PORT}:8989
     restart: unless-stopped
     networks:
       - media-net
 
-  radarr:
-    image: lscr.io/linuxserver/radarr:latest
-    container_name: radarr
+  sonarr-hd:
+    image: lscr.io/linuxserver/sonarr:latest
+    container_name: sonarr-hd
     environment:
       - PUID=${PUID}
       - PGID=${PGID}
       - TZ=${TZ}
     volumes:
-      - ${APPDATA}/radarr:/config
+      - ${APPDATA}/sonarr-hd:/config
       - ${DATA}:/data
     ports:
-      - ${RADARR_HOST_PORT}:7878
+      - ${SONARR_HD_HOST_PORT}:8989
+    restart: unless-stopped
+    networks:
+      - media-net
+
+  radarr-uhd:
+    image: lscr.io/linuxserver/radarr:latest
+    container_name: radarr-uhd
+    environment:
+      - PUID=${PUID}
+      - PGID=${PGID}
+      - TZ=${TZ}
+    volumes:
+      - ${APPDATA}/radarr-uhd:/config
+      - ${DATA}:/data
+    ports:
+      - ${RADARR_UHD_HOST_PORT}:7878
+    restart: unless-stopped
+    networks:
+      - media-net
+
+  radarr-hd:
+    image: lscr.io/linuxserver/radarr:latest
+    container_name: radarr-hd
+    environment:
+      - PUID=${PUID}
+      - PGID=${PGID}
+      - TZ=${TZ}
+    volumes:
+      - ${APPDATA}/radarr-hd:/config
+      - ${DATA}:/data
+    ports:
+      - ${RADARR_HD_HOST_PORT}:7878
     restart: unless-stopped
     networks:
       - media-net
@@ -169,11 +201,17 @@ services:
       - PUID=${PUID}
       - PGID=${PGID}
       - UN_LOG_FILE=${UNPACKERR_LOG_FILE_PATH}
-      - UN_SONARR_0_URL=${UNPACKERR_SONARR_URL}
-      - UN_SONARR_0_API_KEY=${UNPACKERR_SONARR_API_KEY}
-      - UN_RADARR_0_URL=${UNPACKERR_RADARR_URL}
-      - UN_RADARR_0_API_KEY=${UNPACKERR_RADARR_API_KEY}
+      - UN_SONARR_0_URL=${UNPACKERR_SONARR_UHD_URL}
+      - UN_SONARR_0_API_KEY=${UNPACKERR_SONARR_UHD_API_KEY}
+      - UN_RADARR_0_URL=${UNPACKERR_RADARR_UHD_URL}
+      - UN_RADARR_0_API_KEY=${UNPACKERR_RADARR_UHD_API_KEY}
+      - UN_SONARR_1_URL=${UNPACKERR_SONARR_HD_URL}
+      - UN_SONARR_1_API_KEY=${UNPACKERR_SONARR_HD_API_KEY}
+      - UN_RADARR_1_URL=${UNPACKERR_RADARR_HD_URL}
+      - UN_RADARR_1_API_KEY=${UNPACKERR_RADARR_HD_API_KEY}
     volumes:
       - ${APPDATA}/unpackerr:/config
       - ${DATA}/torrents:/data/torrents
     restart: unless-stopped
+    networks:
+      - media-net
