@@ -80,18 +80,34 @@ services:
     networks:
       - media-net
 
-  radarr:
+  radarr-uhd:
     image: lscr.io/linuxserver/radarr:latest
-    container_name: radarr
+    container_name: radarr-uhd
     environment:
       - PUID=${PUID}
       - PGID=${PGID}
       - TZ=${TZ}
     volumes:
-      - ${APPDATA}/radarr:/config
+      - ${APPDATA}/radarr-uhd:/config
       - ${DATA}:/data
     ports:
-      - ${RADARR_HOST_PORT}:7878
+      - ${RADARR_UHD_HOST_PORT}:7878
+    restart: unless-stopped
+    networks:
+      - media-net
+
+  radarr-hd:
+    image: lscr.io/linuxserver/radarr:latest
+    container_name: radarr-hd
+    environment:
+      - PUID=${PUID}
+      - PGID=${PGID}
+      - TZ=${TZ}
+    volumes:
+      - ${APPDATA}/radarr-hd:/config
+      - ${DATA}:/data
+    ports:
+      - ${RADARR_HD_HOST_PORT}:7878
     restart: unless-stopped
     networks:
       - media-net
