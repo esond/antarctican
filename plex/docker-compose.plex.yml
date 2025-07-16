@@ -14,3 +14,16 @@ services:
       - /tmp/plex:/transcode
       - ${DATA}/media:/data/media
     restart: unless-stopped
+
+  tautulli:
+    image: lscr.io/linuxserver/tautulli:latest
+    container_name: tautulli
+    environment:
+      - PUID=${PUID}
+      - PGID=${PGID}
+      - TZ=${TZ}
+    volumes:
+      - ${APPDATA}/tautulli:/config
+    ports:
+      - ${TAUTULLI_HOST_PORT}:8181
+    restart: unless-stopped
