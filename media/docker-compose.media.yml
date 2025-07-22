@@ -96,18 +96,17 @@ services:
     networks:
       - media-net
 
-  jackett:
-    image: lscr.io/linuxserver/jackett:latest
-    container_name: jackett
+  prowlarr:
+    image: lscr.io/linuxserver/prowlarr:latest
+    container_name: prowlarr
     environment:
       - PUID=${PUID}
       - PGID=${PGID}
       - TZ=${TZ}
-      - AUTO_UPDATE=${JACKETT_AUTO_UPDATE}
     volumes:
-      - ${APPDATA}/jackett:/config
+      - ${APPDATA}/prowlarr:/config
     ports:
-      - ${JACKETT_HOST_PORT}:9117
+      - ${PROWLARR_HOST_PORT}:9696
     restart: unless-stopped
     networks:
       - media-net
