@@ -1,4 +1,30 @@
+networks:
+  utils-net:
+    driver: bridge
+
 services:
+  krusader:
+    container_name: krusader
+    image: binhex/arch-krusader:latest
+    privileged: true
+    environment:
+      - PUID=${PUID}
+      - PGID=${PGID}
+      - TZ=${TZ}
+      - TEMP_FOLDER=${APPDATA}/krusader/tmp
+      - VNC_PASSWORD=${KRUSADER_VNC_PASSWORD}
+      - WEBPAGE_TITLE=${KRUSADER_WEBPAGE_TITLE}
+      - WEBUI_PORT=${KRUSADER_WEBUI_PORT}
+    volumes:
+      - ${APPDATA}/krusader:/config
+      - /etc/localtime:/etc/localtime:ro
+    ports:
+      - ${KRUSADER_VNC_PORT}:5900
+      - ${KRUSADER_WEBUI_PORT}:6080
+    restart: unless-stopped
+    networks:
+      - utils-net
+
   dashdot:
     container_name: dashdot
     image: mauricenino/dashdot:latest
@@ -16,6 +42,8 @@ services:
     ports:
       - ${DASHDOT_HOST_PORT}:3001
     restart: unless-stopped
+    networks:
+      - utils-net
 
   homarr:
     container_name: homarr
@@ -26,8 +54,10 @@ services:
       - TZ=${TZ}
       - SECRET_ENCRYPTION_KEY=${HOMARR_SECRET_ENCRYPTION_KEY}
     volumes:
-      - ${APPDATA}:/appdata
+      - ${APPDATA}/homarr:/appdata
       - /var/run/docker.sock:/var/run/docker.sock
     ports:
       - ${HOMARR_HOST_PORT}:7575
     restart: unless-stopped
+    networks:
+      - utils-net
