@@ -10,6 +10,8 @@ services:
       - NET_ADMIN
       - CAP_SYS_TIME
     environment:
+      - PIHOLE_UID=${PUID}
+      - PIHOLE_GID=${PGID}
       - TZ=${TZ}
       - FTLCONF_webserver_api_password=${PIHOLE_FTLCONF_webserver_api_password}
       - FTLCONF_dns_upstreams=${PIHOLE_FTLCONF_dns_upstreams}
@@ -24,3 +26,6 @@ services:
     restart: unless-stopped
     networks:
       - pihole-net
+    labels:
+      net.unraid.docker.webui: 'http://[IP]:[PORT:${PIHOLE_HTTPS_PORT}]/admin'
+      net.unraid.docker.icon: 'https://wp-cdn.pi-hole.net/wp-content/uploads/2016/12/Vortex-R.png'
