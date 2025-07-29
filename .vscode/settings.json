@@ -9,6 +9,7 @@
         "dynamix",
         "emhttp",
         "flaresolverr",
+        "FTLCONF",
         "golift",
         "homarr",
         "hsmw",
@@ -21,6 +22,7 @@
         "notifiarr",
         "overseerr",
         "PGID",
+        "pihole",
         "PRIVOXY",
         "protonvpn",
         "Prowlarr",
@@ -34,6 +36,7 @@
         "tautulli",
         "torrenting",
         "unpackerr",
+        "unraid",
         "urbackup",
         "utmp"
     ]
