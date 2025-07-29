@@ -17,7 +17,10 @@ for disk_path in /mnt/disk[0-9]*; do
   echo "Deleting empty directories from $target_path..."
   
   # `find` can only delete empty directories, so this should be safe.
-  [ -d "$target_path" ] && find "$target_path" -type d -empty -delete -print
+  [ -d "$target_path" ] && find "$target_path" -type d -empty -print
+  
+  # Uncomment this line to actually delete the directories
+  # [ -d "$target_path" ] && find "$target_path" -type d -empty -print -delete
 done
 
 # Notify end
