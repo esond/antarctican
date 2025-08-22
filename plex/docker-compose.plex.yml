@@ -18,6 +18,8 @@ services:
   tautulli:
     image: lscr.io/linuxserver/tautulli:latest
     container_name: tautulli
+    depends_on:
+      - plex
     environment:
       - PUID=${PUID}
       - PGID=${PGID}
