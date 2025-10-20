@@ -145,11 +145,13 @@ services:
       - EMAIL=${SWAG_EMAIL}
       - ONLY_SUBDOMAINS=${SWAG_ONLY_SUBDOMAINS}
       - SWAG_AUTORELOAD=${SWAG_AUTORELOAD}
+      - DOCKER_MODS=linuxserver/mods:swag-dashboard
     volumes:
       - ${APPDATA}/swag:/config
     ports:
       - 443:443
       - 80:80
+      - 81:81
     restart: unless-stopped
     networks:
       - media-net
