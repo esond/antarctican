@@ -43,4 +43,10 @@ services:
       - ${APPDATA}/tunarr:/config/tunarr
     ports:
       - ${TUNARR_HOST_PORT}:8000
+    # Transcode to RAM
+    tmpfs:
+      - /transcode:size=10G
+    # Pass all render devices to container (For Intel QSV)
+    devices:
+      - /dev/dri:/dev/dri
     restart: unless-stopped
