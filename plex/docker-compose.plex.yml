@@ -29,3 +29,24 @@ services:
     ports:
       - ${TAUTULLI_HOST_PORT}:8181
     restart: unless-stopped
+
+  tunarr:
+    image: ghcr.io/chrisbenincasa/tunarr:latest
+    container_name: tunarr
+    depends_on:
+      - plex
+    environment:
+      - PUID=${PUID}
+      - PGID=${PGID}
+      - TZ=${TZ}
+    volumes:
+      - ${APPDATA}/tunarr:/config/tunarr
+    ports:
+      - ${TUNARR_HOST_PORT}:8000
+    # Transcode to RAM
+    tmpfs:
+      - /transcode:size=10G
+    # Pass all render devices to container (For Intel QSV)
+    devices:
+      - /dev/dri:/dev/dri
+    restart: unless-stopped
