@@ -13,7 +13,7 @@ Each top-level directory is one independently-deployable stack:
 - `docker-compose.<stack>.yml` — the compose file for that stack (filename includes the stack name, not the default `docker-compose.yml`)
 - `.env.example` — template; the real `.env` lives next to it on the Unraid host and is gitignored
 
-Stacks present: `media/` (arrs + qbittorrentvpn + swag + overseerr + notifiarr + unpackerr), `plex/` (plex + tautulli + tunarr), `pihole/`, `notes/` (couchdb), `urbackup/`, `utils/` (krusader). `shared/` is intentionally empty (a placeholder mount point on the host). `user-scripts/` is **not** compose — it holds scripts for the User Scripts plugin.
+Stacks present: `media/` (arrs + qbittorrentvpn + swag + seerr + notifiarr + unpackerr), `plex/` (plex + tautulli + tunarr), `pihole/`, `notes/` (couchdb), `urbackup/`, `utils/` (krusader). `shared/` is intentionally empty (a placeholder mount point on the host). `user-scripts/` is **not** compose — it holds scripts for the User Scripts plugin.
 
 When adding a new stack, follow the same shape: new dir, `docker-compose.<name>.yml`, matching `.env.example`.
 
