@@ -98,7 +98,7 @@ The workaround:
 1. Stop seerr: `docker stop seerr`
 2. Edit `/mnt/user/appdata/seerr/settings.json` and set `"csrfProtection": false` (add the field if missing).
 3. Start seerr: `docker start seerr`
-4. Open `http://<unraid-ip>:5055` and log in with Plex. CSRF is off so OAuth completes.
+4. Open `http://<unraid-ip>:<SEERR_HOST_PORT>` (default `5055`) and log in with Plex. CSRF is off so OAuth completes.
 5. Settings → General → set **Application URL** to exactly `https://overseerr.antarctican.tv` (no trailing slash, must be HTTPS).
 6. Re-enable **Enable CSRF Protection** on the same screen. Save.
 7. `docker restart seerr` to pick up the settings cleanly.
@@ -110,7 +110,7 @@ The workaround:
 docker logs -f seerr
 ```
 
-Look for the automatic config migration to complete and the web UI to come up on `http://<host>:5055`. Hit it through SWAG too to confirm the proxy-conf change.
+Look for the automatic config migration to complete and the web UI to come up on `http://<host>:<SEERR_HOST_PORT>` (default `5055`). Hit it through SWAG too to confirm the proxy-conf change.
 
 If the Plex button is missing on the SWAG URL but present on the LAN IP, the cause is almost always one of:
 

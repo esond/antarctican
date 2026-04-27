@@ -19,7 +19,7 @@ When adding a new stack, follow the same shape: new dir, `docker-compose.<name>.
 
 ## Conventions baked into every compose file
 
-- **User/group:** containers run as `PUID=99` / `PGID=100` (Unraid's `nobody:users`). Always pass these through.
+- **User/group:** for images that support it, containers run as `PUID=99` / `PGID=100` (Unraid's `nobody:users`) — pass these through by default. Some upstream images run as a fixed non-root UID and don't honor `PUID`/`PGID` (e.g. `seerr` runs as `node` / UID 1000); follow the upstream image's user model in those cases instead of forcing the vars in.
 - **Path variables:** `${APPDATA}` → `/mnt/user/appdata` (per-container config), `${DATA}` → `/mnt/user/data` (media + torrents using the [TRaSH guides](https://trash-guides.info/) layout), `${BACKUP}` → backup share. Volumes use these — never hardcode `/mnt/user/...` paths.
 - **Timezone:** `${TZ}` is passed to every container.
 - **Ports:** host ports come from env vars (`${SERVICE_HOST_PORT}`), container-internal ports stay literal. This keeps port remapping a one-line `.env` change.
