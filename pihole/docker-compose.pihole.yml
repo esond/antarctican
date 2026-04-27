@@ -29,6 +29,6 @@ services:
     networks:
       - pihole-net
     labels:
-      net.unraid.docker.webui: 'https://[${UNRAID_BASE_URL}]:[PORT:${PIHOLE_HTTPS_PORT}]/admin'
-      net.unraid.docker.icon: 'https://em-content.zobj.net/source/microsoft/74/strawberry_1f353.png'
-      net.unraid.docker.shell: 'sh'
+      net.unraid.docker.webui: "https://[IP]:[PORT:${PIHOLE_HTTPS_PORT}]/admin"
+      net.unraid.docker.icon: "https://wp-cdn.pi-hole.net/wp-content/uploads/2016/12/Vortex-R.png"
+      net.unraid.docker.shell: "sh"

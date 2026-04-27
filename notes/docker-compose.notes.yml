@@ -6,11 +6,11 @@ services:
   couchdb:
     image: couchdb:latest
     container_name: couchdb
-    environment: 
+    environment:
       - PUID=${PUID}
       - PGID=${PGID}
       - TZ=${TZ}
-      - COUCHDB_USER=${COUCHDB_USER} 
+      - COUCHDB_USER=${COUCHDB_USER}
       - COUCHDB_PASSWORD=${COUCHDB_PASSWORD}
     volumes:
       - ${APPDATA}/couchdb:/opt/couchdb/data
@@ -21,10 +21,11 @@ services:
     networks:
       - notes-net
     healthcheck:
-      test: curl --fail -s -u ${COUCHDB_USER}:${COUCHDB_PASSWORD} http://localhost:5984/_up | grep -Eo '\"status\":\"ok\"' || exit 1
+      test: ["CMD-SHELL", "curl --fail -s -u ${COUCHDB_USER}:${COUCHDB_PASSWORD} http://localhost:5984/_up | grep -Eo '\"status\":\"ok\"' || exit 1"]
       interval: 30s
       timeout: 10s
       retries: 3
     labels:
-      net.unraid.docker.webui: http://[IP]:[PORT:5984]/_utils" # for some reason this does not work properly
-      net.unraid.docker.icon: https://raw.githubusercontent.com/selfhst/icons/refs/heads/main/png/couchdb.png"
+      net.unraid.docker.webui: 'http://[IP]:[PORT:${COUCHDB_HOST_PORT}]/_utils'
+      net.unraid.docker.icon: 'https://raw.githubusercontent.com/selfhst/icons/refs/heads/main/png/couchdb.png'
+      net.unraid.docker.shell: 'sh'

@@ -24,3 +24,7 @@ services:
     restart: unless-stopped
     networks:
       - utils-net
+    labels:
+      net.unraid.docker.webui: "http://[IP]:[PORT:${KRUSADER_WEBUI_PORT}]"
+      net.unraid.docker.icon: "https://apps.kde.org/app-icons/org.kde.krusader.svg"
+      net.unraid.docker.shell: "sh"
