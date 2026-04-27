@@ -1,0 +1,30 @@
+name: validate
+
+on:
+  pull_request:
+    paths:
+      - '**/docker-compose.*.yml'
+      - '**/.env.example'
+      - '.github/workflows/validate-compose.yml'
+  push:
+    branches: [main]
+    paths:
+      - '**/docker-compose.*.yml'
+      - '**/.env.example'
+      - '.github/workflows/validate-compose.yml'
+
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        stack: [media, notes, pihole, plex, urbackup, utils]
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Validate ${{ matrix.stack }} compose file
+        working-directory: ${{ matrix.stack }}
+        run: |
+          cp .env.example .env
+          docker compose -f docker-compose.${{ matrix.stack }}.yml config -q
