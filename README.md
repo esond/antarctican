@@ -1,17 +1,17 @@
-# Antarctican
+# antarctican
 
 Settings, configurations, and scripts for the `antarctican` Unraid home server.
 
-Each top-level directory is one independently-deployable stack. Compose stacks ship `docker-compose.<stack>.yml` plus an `.env.example` template; the real `.env` lives next to it on the host and is gitignored.
+Each top-level directory is one independently-deployable stack via the Unraid Docker Compose Manager plugin. Compose stacks ship `docker-compose.<stack>.yml` plus an `.env.example` template; the real `.env` lives next to it on the host and is gitignored.
 
 ## Stacks
 
 | Directory | What it runs |
 |---|---|
-| [`media/`](media/) | sonarr / radarr / prowlarr, qBittorrent (VPN), SWAG reverse proxy, Seerr, Notifiarr, Unpackerr |
+| [`media/`](media/) | Media management: sonarr / radarr / prowlarr, qBittorrent (VPN), SWAG reverse proxy, Seerr, Notifiarr, Unpackerr |
 | [`plex/`](plex/) | Plex, Tautulli, Tunarr |
 | [`pihole/`](pihole/) | Pi-hole DNS |
-| [`notes/`](notes/) | CouchDB |
+| [`notes/`](notes/) | Obsidian LiveSync setup (CouchDB) |
 | [`urbackup/`](urbackup/) | UrBackup server |
 | [`utils/`](utils/) | Krusader |
 | [`user-scripts/`](user-scripts/) | Shell/Python scripts for the User Scripts plugin (not compose) |
