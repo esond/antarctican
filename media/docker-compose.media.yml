@@ -37,6 +37,10 @@ services:
     restart: unless-stopped
     networks:
       - media-net
+    labels:
+      net.unraid.docker.webui: "http://[IP]:[PORT:${QBITTORRENT_WEBUI_PORT}]"
+      net.unraid.docker.icon: "https://avatars.githubusercontent.com/u/2131270?s=200&v=4"
+      net.unraid.docker.shell: "sh"
 
   flaresolverr:
     image: 21hsmw/flaresolverr:nodriver
@@ -51,6 +55,9 @@ services:
     restart: unless-stopped
     networks:
       - media-net
+    labels:
+      net.unraid.docker.icon: "https://avatars.githubusercontent.com/u/75936191?s=200&v=4"
+      net.unraid.docker.shell: "sh"
 
   prowlarr:
     image: lscr.io/linuxserver/prowlarr:latest
@@ -68,6 +75,10 @@ services:
     restart: unless-stopped
     networks:
       - media-net
+    labels:
+      net.unraid.docker.webui: "http://[IP]:[PORT:${PROWLARR_HOST_PORT}]"
+      net.unraid.docker.icon: "https://prowlarr.com/logo/128.png"
+      net.unraid.docker.shell: "sh"
 
   sonarr-uhd:
     image: lscr.io/linuxserver/sonarr:latest
@@ -87,6 +98,10 @@ services:
     restart: unless-stopped
     networks:
       - media-net
+    labels:
+      net.unraid.docker.webui: "http://[IP]:[PORT:${SONARR_UHD_HOST_PORT}]"
+      net.unraid.docker.icon: "https://wiki.servarr.com/assets/sonarr/logos/128.png"
+      net.unraid.docker.shell: "sh"
 
   radarr-uhd:
     image: lscr.io/linuxserver/radarr:latest
@@ -106,6 +121,10 @@ services:
     restart: unless-stopped
     networks:
       - media-net
+    labels:
+      net.unraid.docker.webui: "http://[IP]:[PORT:${RADARR_UHD_HOST_PORT}]"
+      net.unraid.docker.icon: "https://wiki.servarr.com/assets/radarr/logos/128.png"
+      net.unraid.docker.shell: "sh"
 
   notifiarr:
     image: golift/notifiarr:latest
@@ -127,6 +146,10 @@ services:
       - ${NOTIFIARR_HOST_PORT}:5454
     networks:
       - media-net
+    labels:
+      net.unraid.docker.webui: "http://[IP]:[PORT:${NOTIFIARR_HOST_PORT}]"
+      net.unraid.docker.icon: "https://notifiarr.com/images/logo/notifiarr.png"
+      net.unraid.docker.shell: "sh"
 
   swag:
     image: lscr.io/linuxserver/swag:latest
@@ -154,6 +177,10 @@ services:
     restart: unless-stopped
     networks:
       - media-net
+    labels:
+      net.unraid.docker.webui: "http://[IP]:[PORT:81]"
+      net.unraid.docker.icon: "https://docs.linuxserver.io/assets/icon.svg"
+      net.unraid.docker.shell: "sh"
 
   seerr:
     image: ghcr.io/seerr-team/seerr:latest
@@ -172,6 +199,10 @@ services:
     restart: unless-stopped
     networks:
       - media-net
+    labels:
+      net.unraid.docker.webui: "http://[IP]:[PORT:${SEERR_HOST_PORT}]"
+      net.unraid.docker.icon: "https://raw.githubusercontent.com/sct/overseerr/refs/heads/develop/public/favicon-32x32.png"
+      net.unraid.docker.shell: "sh"
 
   unpackerr:
     image: golift/unpackerr:latest
@@ -192,3 +223,6 @@ services:
     restart: unless-stopped
     networks:
       - media-net
+    labels:
+      net.unraid.docker.icon: "https://unpackerr.zip/img/icon.png"
+      net.unraid.docker.shell: "sh"

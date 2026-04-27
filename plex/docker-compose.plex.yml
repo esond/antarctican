@@ -14,6 +14,10 @@ services:
       - /tmp/plex:/transcode
       - ${DATA}/media:/data/media
     restart: unless-stopped
+    labels:
+      net.unraid.docker.webui: "http://[IP]:[PORT:32400]/web"
+      net.unraid.docker.icon: "https://notifiarr.com/images/logo/plex.png?t=1725203811"
+      net.unraid.docker.shell: "sh"
 
   tautulli:
     image: lscr.io/linuxserver/tautulli:latest
@@ -29,6 +33,10 @@ services:
     ports:
       - ${TAUTULLI_HOST_PORT}:8181
     restart: unless-stopped
+    labels:
+      net.unraid.docker.webui: "http://[IP]:[PORT:${TAUTULLI_HOST_PORT}]"
+      net.unraid.docker.icon: "https://raw.githubusercontent.com/linuxserver/docker-templates/master/linuxserver.io/img/tautulli-icon.png"
+      net.unraid.docker.shell: "sh"
 
   tunarr:
     image: ghcr.io/chrisbenincasa/tunarr:latest
@@ -50,3 +58,7 @@ services:
     devices:
       - /dev/dri:/dev/dri
     restart: unless-stopped
+    labels:
+      net.unraid.docker.webui: "http://[IP]:[PORT:${TUNARR_HOST_PORT}]"
+      net.unraid.docker.icon: "https://tunarr.com/assets/tunarr.png"
+      net.unraid.docker.shell: "sh"

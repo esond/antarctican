@@ -12,3 +12,7 @@ services:
       - ${BACKUP}/urbackup:/media
       - /etc/localtime:/etc/localtime:ro
     restart: unless-stopped
+    labels:
+      net.unraid.docker.webui: 'http://[IP]:[PORT:55414]'
+      net.unraid.docker.icon: 'https://urbackup.atlassian.net/wiki/download/attachments/360449/atl.site.logo?version=2&modificationDate=1361821373617&cacheVersion=1&api=v2'
+      net.unraid.docker.shell: 'sh'
