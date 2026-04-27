@@ -1,6 +1,6 @@
 # antarctican
 
-Settings, configurations, and scripts for the `antarctican` Unraid home server. Significan acknowledgements made to [TRaSH Guides](https://trash-guides.info/File-and-Folder-Structure/How-to-set-up/Unraid/) for folder setup and other guidelines.
+Settings, configurations, and scripts for the `antarctican` Unraid home server. Significant acknowledgements made to [TRaSH Guides](https://trash-guides.info/File-and-Folder-Structure/How-to-set-up/Unraid/) for folder setup and other guidelines.
 
 Each top-level directory is one independently-deployable stack via the Unraid Docker Compose Manager plugin. Compose stacks ship `docker-compose.<stack>.yml` plus an `.env.example` template; the real `.env` lives next to it on the host and is gitignored.
 
