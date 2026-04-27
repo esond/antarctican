@@ -14,7 +14,6 @@ services:
       - PGID=${PGID}
       - TZ=${TZ}
       - WEBUI_PORT=${QBITTORRENT_WEBUI_PORT}
-      - VPN_ENABLED=yes
       - VPN_USER=${QBITTORRENT_VPN_USER}
       - VPN_PASS=${QBITTORRENT_VPN_PASS}
       - VPN_ENABLED=yes
@@ -38,7 +37,7 @@ services:
     restart: unless-stopped
     networks:
       - media-net
-      
+
   flaresolverr:
     image: 21hsmw/flaresolverr:nodriver
     container_name: flaresolverr
@@ -69,7 +68,7 @@ services:
     restart: unless-stopped
     networks:
       - media-net
-      
+
   sonarr-uhd:
     image: lscr.io/linuxserver/sonarr:latest
     container_name: sonarr-uhd
