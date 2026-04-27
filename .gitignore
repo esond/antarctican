@@ -1,1 +1,6 @@
 .env
+.claude/*.local.*
+.claude/memories/
+.claude/todos/
+.claude/statsig/
+.claude/worktrees/
