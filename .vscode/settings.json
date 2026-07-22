@@ -14,6 +14,7 @@
     "healthcheck",
     "homarr",
     "hsmw",
+    "iptables",
     "Krusader",
     "localtime",
     "lscr",
@@ -34,6 +35,7 @@
     "seerr",
     "shadowsocks",
     "sonarr",
+    "supervisord",
     "sysctls",
     "tautulli",
     "torrenting",
@@ -41,6 +43,7 @@
     "unraid",
     "urbackup",
     "utmp",
-    "webui"
+    "webui",
+    "wireguard"
   ]
 }
