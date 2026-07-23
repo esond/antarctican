@@ -2,16 +2,9 @@ name: validate
 
 on:
   pull_request:
-    paths:
-      - '**/docker-compose.*.yml'
-      - '**/.env.example'
-      - '.github/workflows/validate-compose.yml'
+    branches: [main]
   push:
     branches: [main]
-    paths:
-      - '**/docker-compose.*.yml'
-      - '**/.env.example'
-      - '.github/workflows/validate-compose.yml'
 
 jobs:
   validate:
