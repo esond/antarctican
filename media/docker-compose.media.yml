@@ -34,6 +34,17 @@ services:
       - ${QBITTORRENT_TORRENTING_PORT}:${QBITTORRENT_TORRENTING_PORT}/udp
       - 8118:8118
       - 9118:9118
+    healthcheck:
+      # Unhealthy when qBittorrent reports the VPN forwarded port is closed
+      # (connection_status "firewalled") -- the ProtonVPN NAT-PMP port-forward
+      # stall (binhex #265/#298). healarr restarts the container on unhealthy to
+      # force a fresh VPN reconnect + port negotiation. Runs inside the
+      # container, so it hits the WebUI on localhost (auth-bypassed, no creds).
+      test: "curl -fsS http://localhost:${QBITTORRENT_WEBUI_PORT}/api/v2/transfer/info | grep -q 'connection_status.:.firewalled' && exit 1 || exit 0"
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 5m
     restart: unless-stopped
     networks:
       - media-net
@@ -41,6 +52,53 @@ services:
       net.unraid.docker.webui: "http://[IP]:[PORT:${QBITTORRENT_WEBUI_PORT}]"
       net.unraid.docker.icon: "https://avatars.githubusercontent.com/u/2131270?s=200&v=4"
       net.unraid.docker.shell: "sh"
+
+  # Docker API proxy for healarr: exposes only container read + POST (restart)
+  # so nothing in the stack touches the raw docker.sock. Reachable only on
+  # media-net (no published ports).
+  dockersocket:
+    image: tecnativa/docker-socket-proxy:latest
+    container_name: dockersocket
+    environment:
+      - TZ=${TZ}
+      - CONTAINERS=1
+      - POST=1
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock:ro
+    restart: unless-stopped
+    networks:
+      - media-net
+    labels:
+      net.unraid.docker.shell: "sh"
+
+  # Watches container health and restarts qbittorrentvpn when its healthcheck
+  # goes unhealthy (VPN forwarded port stuck). Talks to the Docker API through
+  # dockersocket, never the raw socket.
+  healarr:
+    image: binhex/arch-healarr:latest
+    container_name: healarr
+    depends_on:
+      - dockersocket
+      - qbittorrentvpn
+    environment:
+      - PUID=${PUID}
+      - PGID=${PGID}
+      - TZ=${TZ}
+      - UMASK=000
+      - DOCKER_HOST=tcp://dockersocket:2375
+      - CONTAINER_NAME=qbittorrentvpn
+      - ACTION=restart
+      - MONITOR_INTERVAL=60
+      - RETRY_COUNT=3
+      - RETRY_DELAY=10
+      - LOG_LEVEL=1
+    volumes:
+      - ${APPDATA}/healarr:/config
+    restart: unless-stopped
+    networks:
+      - media-net
+    labels:
+      net.unraid.docker.shell: "bash"
 
   flaresolverr:
     image: 21hsmw/flaresolverr:nodriver
