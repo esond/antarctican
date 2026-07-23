@@ -9,14 +9,14 @@ requests. Deployed from `docker-compose.media.yml` via the Docker Compose Manage
 | Service | Image | Purpose | UI port |
 |---|---|---|---|
 | `qbittorrentvpn` | binhex/arch-qbittorrentvpn | Torrent client routed through ProtonVPN (WireGuard) | `${QBITTORRENT_WEBUI_PORT}` |
-| `prowlarr` | linuxserver/prowlarr | Indexer manager, feeds the arrs | `${PROWLARR_HOST_PORT}` |
+| `prowlarr` | lscr.io/linuxserver/prowlarr | Indexer manager, feeds the arrs | `${PROWLARR_HOST_PORT}` |
 | `flaresolverr` | 21hsmw/flaresolverr | Cloudflare challenge solver for Prowlarr | `${FLARESOLVERR_HOST_PORT}` |
-| `sonarr-uhd` | linuxserver/sonarr | TV management | `${SONARR_UHD_HOST_PORT}` |
-| `radarr-uhd` | linuxserver/radarr | Movie management | `${RADARR_UHD_HOST_PORT}` |
+| `sonarr-uhd` | lscr.io/linuxserver/sonarr | TV management | `${SONARR_UHD_HOST_PORT}` |
+| `radarr-uhd` | lscr.io/linuxserver/radarr | Movie management | `${RADARR_UHD_HOST_PORT}` |
 | `unpackerr` | golift/unpackerr | Extracts completed archives for the arrs | — |
 | `notifiarr` | golift/notifiarr | Notifications / Discord integration | `${NOTIFIARR_HOST_PORT}` |
-| `seerr` | seerr-team/seerr | Media request UI | `${SEERR_HOST_PORT}` |
-| `swag` | linuxserver/swag | Reverse proxy + TLS (`antarctican.tv` wildcard) | `81` (dashboard) |
+| `seerr` | ghcr.io/seerr-team/seerr | Media request UI | `${SEERR_HOST_PORT}` |
+| `swag` | lscr.io/linuxserver/swag | Reverse proxy + TLS (`antarctican.tv` wildcard) | `81` (dashboard) |
 | `dockersocket` | tecnativa/docker-socket-proxy | Scoped Docker API for healarr | — |
 | `healarr` | binhex/arch-healarr | Restarts qbittorrentvpn when its VPN port stalls | — |
 
