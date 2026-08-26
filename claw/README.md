@@ -78,6 +78,24 @@ users.
    memory tools (`store`, `searchMemories`, `get`) — Memorizer's README has a
    recommended snippet.
 
+### Hardening
+
+Once the dashboard is publicly reachable, apply these (the onboarding wizard leaves
+insecure auth on, and `gateway.bind lan` makes the origin/rate-limit settings matter):
+
+```sh
+docker exec openclaw openclaw config set gateway.controlUi.allowInsecureAuth false
+docker exec openclaw openclaw config set plugins.allow '["discord"]'
+docker exec openclaw openclaw config set gateway.controlUi.allowedOrigins '["https://claw.antarctican.tv"]'
+docker exec openclaw openclaw config set gateway.auth.rateLimit '{"maxAttempts":10,"windowMs":60000,"lockoutMs":300000}'
+docker restart openclaw
+docker exec openclaw openclaw security audit
+```
+
+The audit should come back with zero criticals. A warn about the unpinned
+`@openclaw/discord` npm spec is accepted — it matters at plugin-update time, not at
+rest; pin to an exact version if updates should be deliberate.
+
 ### Gotchas
 
 - The empty `config/workspace` directory inside the OpenClaw appdata is the mountpoint
