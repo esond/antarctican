@@ -98,6 +98,12 @@ rest; pin to an exact version if updates should be deliberate.
 
 ### Gotchas
 
+- First dashboard login from any new browser is two steps: paste the gateway token
+  (`openclaw config get gateway.auth.token`) into Control UI settings, then approve
+  the device pairing request it triggers with
+  `docker exec openclaw openclaw devices approve <requestId>` (the requestId is shown
+  on the login screen). Both stick per browser. Leave `deviceAutoApprove` off — the
+  one-time approval is what stops a stolen token from silently attaching a new device.
 - The empty `config/workspace` directory inside the OpenClaw appdata is the mountpoint
   for the nested workspace bind. Deleting it on the host disconnects the live mount
   (the container sees ENOENT on its workspace); recreate the directory and
