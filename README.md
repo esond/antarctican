@@ -8,6 +8,7 @@ Each top-level directory is one independently-deployable stack via the Unraid Do
 
 | Directory | What it runs |
 |---|---|
+| [`claw/`](claw/) | Personal AI assistant: OpenClaw (Discord + Anthropic API), Memorizer (MCP memory), Cloudflare Tunnel |
 | [`media/`](media/) | Media management: sonarr / radarr / prowlarr, qBittorrent (VPN), SWAG reverse proxy, Seerr, Notifiarr, Unpackerr |
 | [`plex/`](plex/) | Plex, Tautulli, Tunarr |
 | [`pihole/`](pihole/) | Pi-hole DNS |
