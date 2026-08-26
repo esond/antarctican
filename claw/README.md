@@ -40,9 +40,8 @@ users.
    `cloudflared` service to stay LAN-only for now.
 5. Run OpenClaw onboarding **before first start** — a fresh install has no config, the
    container crash-loops until one exists, and a restarting container can't be exec'd.
-   Run the wizard as a one-off container with all three mounts (omit the workspace
-   mount and the wizard seeds the agent files into `config/workspace` instead of the
-   share):
+   Run the wizard as a one-off container with all three mounts (omitting the workspace
+   mount seeds the agent files into `config/workspace` instead of the share):
 
    ```sh
    docker run -it --rm \
