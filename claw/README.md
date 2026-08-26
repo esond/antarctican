@@ -39,29 +39,54 @@ users.
 
 4. Set up the Cloudflare Tunnel (below) and put its token in `.env`, or comment out the
    `cloudflared` service to stay LAN-only for now.
-5. Start the stack from the Compose Manager plugin. First start pulls the two small
-   Ollama models (~100MB); `memorizer` waits for that to finish before coming up.
-6. Run OpenClaw onboarding to wire up Anthropic + Discord and generate the gateway auth
-   config:
+5. Run OpenClaw onboarding **before first start** — a fresh install has no config, the
+   container crash-loops until one exists, and a restarting container can't be exec'd.
+   Run the wizard as a one-off container with all three mounts (omit the workspace
+   mount and the wizard seeds the agent files into `config/workspace` instead of the
+   share):
 
    ```sh
-   docker exec -it openclaw openclaw onboard
+   docker run -it --rm \
+     -v /mnt/user/appdata/openclaw/config:/home/node/.openclaw \
+     -v /mnt/user/appdata/openclaw/auth-secret:/home/node/.config/openclaw \
+     -v /mnt/user/claw:/home/node/.openclaw/workspace \
+     ghcr.io/openclaw/openclaw:latest onboard
    ```
 
-7. Register Memorizer as an MCP server in OpenClaw's config
-   (`/mnt/user/appdata/openclaw/config/openclaw.json`), pointing at the
-   container-internal address:
+6. Start the stack from the Compose Manager plugin. First start pulls the two small
+   Ollama models (~100MB); `memorizer` waits for that to finish before coming up.
+7. Enable the Discord plugin — onboarding installs it without explicit trust, so the
+   bot won't start until it's enabled:
 
-   ```json
-   "mcp": {
-     "servers": {
-       "memorizer": { "url": "http://memorizer:8080/mcp" }
-     }
-   }
+   ```sh
+   docker exec openclaw openclaw config set plugins.entries.discord.enabled true
+   docker restart openclaw
    ```
 
-   Then add a line to the agent's system prompt telling it to use the memory tools
-   (`store`, `searchMemories`, `get`) — Memorizer's README has a recommended snippet.
+   In the Discord developer portal, the bot needs the **Message Content** and
+   **Server Members** privileged intents. Its presence shows offline by design — DM
+   it anyway; the first DM returns a pairing code, approved with
+   `docker exec openclaw openclaw pairing approve discord <code>`.
+8. Register Memorizer as an MCP server, pointing at the container-internal address:
+
+   ```sh
+   docker exec openclaw openclaw mcp add memorizer --url http://memorizer:8080/mcp --transport streamable-http
+   docker exec openclaw openclaw mcp probe memorizer
+   ```
+
+   Then add a line to the agent's `TOOLS.md` in the workspace telling it to use the
+   memory tools (`store`, `searchMemories`, `get`) — Memorizer's README has a
+   recommended snippet.
+
+### Gotchas
+
+- The empty `config/workspace` directory inside the OpenClaw appdata is the mountpoint
+  for the nested workspace bind. Deleting it on the host disconnects the live mount
+  (the container sees ENOENT on its workspace); recreate the directory and
+  `docker restart openclaw` to recover.
+- A `WorkspaceVanishedError` at message time means the workspace content no longer
+  matches the attestation in `config/workspace-attestations/` — usually an empty or
+  wrong mount. Fix the workspace rather than deleting attestations.
 
 ## Public dashboard access
 
@@ -79,7 +104,16 @@ DNSimple):
    pick **Docker** as the connector, and copy the token into
    `CLOUDFLARED_TUNNEL_TOKEN`.
 2. Add a public hostname `claw.antarctican.tv` to the tunnel with service
-   `http://openclaw:18789` (Cloudflare creates the CNAME automatically).
+   `http://openclaw:18789` (Cloudflare creates the CNAME automatically). OpenClaw
+   binds loopback inside its container by default, which `cloudflared` can't reach
+   (502 from the tunnel); set it to bind all container interfaces:
+
+   ```sh
+   docker exec openclaw openclaw config set gateway.bind lan
+   docker restart openclaw
+   ```
+
+   Exposure is still only what compose publishes — the LAN port and the tunnel.
 3. In Zero Trust → Access → Applications, add an application for that hostname with a
    policy allowing only your email (one-time PIN or an identity provider).
 
