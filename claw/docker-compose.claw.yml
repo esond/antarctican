@@ -68,8 +68,8 @@ services:
     depends_on:
       memorizer-postgres:
         condition: service_healthy
-      memorizer-ollama-init:
-        condition: service_completed_successfully
+      memorizer-ollama:
+        condition: service_healthy
     environment:
       - TZ=${TZ}
       - ConnectionStrings__Storage=Host=memorizer-postgres;Port=5432;Database=postgmem;Username=postgres;Password=${MEMORIZER_DB_PASSWORD}
@@ -120,54 +120,30 @@ services:
 
   # Local embedding + chunking models for memorizer. CPU-only is fine for
   # the small models below. No published port -- reachable only on claw-net.
+  # Pulls its own models on start (a no-op once they exist) instead of using
+  # upstream's one-shot init container -- an exited container makes the
+  # Compose Manager UI show the whole stack as stopped. The healthcheck
+  # only passes once both models are present, which is what gates memorizer.
   memorizer-ollama:
     image: ollama/ollama
     container_name: memorizer-ollama
+    entrypoint: ["/bin/sh", "-c"]
+    command: >
+      "ollama serve &
+      until ollama list >/dev/null 2>&1; do sleep 2; done &&
+      ollama pull all-minilm:33m-l12-v2-fp16 &&
+      ollama pull qwen2:0.5b &&
+      wait"
     environment:
       - TZ=${TZ}
     volumes:
       - ${APPDATA}/memorizer/ollama:/root/.ollama
+    healthcheck:
+      test: ["CMD-SHELL", "ollama list | grep -q 'all-minilm:33m-l12-v2-fp16' && ollama list | grep -q 'qwen2:0.5b'"]
+      interval: 10s
+      timeout: 5s
+      retries: 60
+      start_period: 30s
     restart: unless-stopped
     networks:
       - claw-net
-
-  # One-shot: pulls the embedding + chunking models into memorizer-ollama on
-  # stack start (mirrors upstream memorizer's bootstrap).
-  memorizer-ollama-init:
-    image: curlimages/curl:latest
-    container_name: memorizer-ollama-init
-    entrypoint: ["/bin/sh", "-c"]
-    depends_on:
-      - memorizer-ollama
-    networks:
-      - claw-net
-    command: >
-      "
-      echo 'Waiting for Ollama service to start...' &&
-      sleep 15 &&
-
-      echo 'Pulling embedding model...' &&
-      for i in 1 2 3 4 5; do
-        echo 'Attempting to pull embedding model (try '$$i'/5)...' &&
-        if curl -s -X POST http://memorizer-ollama:11434/api/pull -d '{\"name\": \"all-minilm:33m-l12-v2-fp16\"}'; then
-          echo 'Embedding model pull initiated successfully' &&
-          break
-        fi &&
-        echo 'Ollama not ready yet for embedding model, waiting...' &&
-        sleep 10
-      done &&
-
-      echo 'Pulling lightweight LLM model...' &&
-      for i in 1 2 3 4 5; do
-        echo 'Attempting to pull LLM model (try '$$i'/5)...' &&
-        if curl -s -X POST http://memorizer-ollama:11434/api/pull -d '{\"name\": \"qwen2:0.5b\"}'; then
-          echo 'LLM model pull initiated successfully' &&
-          echo 'All models pulled successfully' &&
-          exit 0
-        fi &&
-        echo 'Failed to pull LLM model, retrying...' &&
-        sleep 10
-      done &&
-      echo 'Failed to pull models after multiple attempts' &&
-      exit 1
-      "

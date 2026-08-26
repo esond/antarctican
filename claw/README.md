@@ -12,8 +12,7 @@ models) with Memorizer as its long-term memory over MCP. Deployed from
 | `cloudflared` | cloudflare/cloudflared | Publishes the dashboard at a public hostname via Cloudflare Tunnel | — |
 | `memorizer` | petabridge/memorizer | Vector-search agent memory (MCP server) | `${MEMORIZER_HOST_PORT}` |
 | `memorizer-postgres` | pgvector/pgvector | Memory storage | — |
-| `memorizer-ollama` | ollama/ollama | Local embedding + chunking models for Memorizer | — |
-| `memorizer-ollama-init` | curlimages/curl | One-shot model pull on stack start | — |
+| `memorizer-ollama` | ollama/ollama | Local embedding + chunking models for Memorizer (pulls them on start) | — |
 
 OpenClaw runs as its upstream fixed user (`node`, UID 1000) — it doesn't honor
 `PUID`/`PGID`, same situation as Seerr. Postgres and Ollama likewise use their upstream
@@ -53,8 +52,9 @@ users.
      ghcr.io/openclaw/openclaw:latest onboard
    ```
 
-6. Start the stack from the Compose Manager plugin. First start pulls the two small
-   Ollama models (~100MB); `memorizer` waits for that to finish before coming up.
+6. Start the stack from the Compose Manager plugin. On first start `memorizer-ollama`
+   pulls its two small models (~100MB) and only reports healthy once both are present;
+   `memorizer` waits for that before coming up.
 7. Enable the Discord plugin — onboarding installs it without explicit trust, so the
    bot won't start until it's enabled:
 
