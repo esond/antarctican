@@ -86,7 +86,7 @@ insecure auth on, and `gateway.bind lan` makes the origin/rate-limit settings ma
 ```sh
 docker exec openclaw openclaw config set gateway.controlUi.allowInsecureAuth false
 docker exec openclaw openclaw config set plugins.allow '["discord"]'
-docker exec openclaw openclaw config set gateway.controlUi.allowedOrigins '["https://claw.antarctican.tv"]'
+docker exec openclaw openclaw config set gateway.controlUi.allowedOrigins '["https://claw.example.com"]'
 docker exec openclaw openclaw config set gateway.auth.rateLimit '{"maxAttempts":10,"windowMs":60000,"lockoutMs":300000}'
 docker restart openclaw
 docker exec openclaw openclaw security audit
@@ -120,14 +120,14 @@ of CVEs; an agent gateway with credentials to your life is the last thing that s
 naked on 443.
 
 Instead, `cloudflared` makes an outbound-only connection to Cloudflare and serves the
-dashboard at `claw.antarctican.tv`, with a Cloudflare Access policy in front (the
-`antarctican.tv` zone is hosted on Cloudflare's free plan; registration stays at
+dashboard at `claw.example.com`, with a Cloudflare Access policy in front (the
+`example.com` zone is hosted on Cloudflare's free plan; registration stays at
 DNSimple):
 
 1. In [Zero Trust](https://one.dash.cloudflare.com/) → Networks → Tunnels, create a tunnel,
    pick **Docker** as the connector, and copy the token into
    `CLOUDFLARED_TUNNEL_TOKEN`.
-2. Add a public hostname `claw.antarctican.tv` to the tunnel with service
+2. Add a public hostname `claw.example.com` to the tunnel with service
    `http://openclaw:18789` (Cloudflare creates the CNAME automatically). OpenClaw
    binds loopback inside its container by default, which `cloudflared` can't reach
    (502 from the tunnel); set it to bind all container interfaces:

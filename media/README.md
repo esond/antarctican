@@ -1,7 +1,7 @@
 # media stack
 
 The main media-management stack: the *arr* apps plus qBittorrent (behind a VPN) for
-acquiring content, SWAG terminating TLS for everything on `antarctican.tv`, and Seerr for
+acquiring content, SWAG terminating TLS for everything on the `${SWAG_URL}` domain, and Seerr for
 requests. Deployed from `docker-compose.media.yml` via the Docker Compose Manager plugin.
 
 ## Services
@@ -16,7 +16,7 @@ requests. Deployed from `docker-compose.media.yml` via the Docker Compose Manage
 | `unpackerr` | golift/unpackerr | Extracts completed archives for the arrs | — |
 | `notifiarr` | golift/notifiarr | Notifications / Discord integration | `${NOTIFIARR_HOST_PORT}` |
 | `seerr` | ghcr.io/seerr-team/seerr | Media request UI | `${SEERR_HOST_PORT}` |
-| `swag` | lscr.io/linuxserver/swag | Reverse proxy + TLS (`antarctican.tv` wildcard) | `81` (dashboard) |
+| `swag` | lscr.io/linuxserver/swag | Reverse proxy + TLS (`${SWAG_URL}` wildcard) | `81` (dashboard) |
 | `dockersocket` | tecnativa/docker-socket-proxy | Scoped Docker API for healarr | — |
 | `healarr` | binhex/arch-healarr | Restarts qbittorrentvpn when its VPN port stalls | — |
 

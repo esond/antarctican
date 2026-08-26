@@ -218,7 +218,7 @@ services:
       - PUID=${PUID}
       - PGID=${PGID}
       - TZ=${TZ}
-      - URL=antarctican.tv
+      - URL=${SWAG_URL}
       - VALIDATION=dns
       - SUBDOMAINS=wildcard
       - DNSPLUGIN=${SWAG_DNSPLUGIN}
