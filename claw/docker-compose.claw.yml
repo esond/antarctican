@@ -1,0 +1,149 @@
+networks:
+  claw-net:
+    driver: bridge
+
+services:
+  # OpenClaw gateway + dashboard. The image runs as its own fixed user
+  # (node, uid 1000) and does not honor PUID/PGID -- chown the appdata
+  # dirs and workspace share to 1000:1000 (see README).
+  openclaw:
+    image: ghcr.io/openclaw/openclaw:latest
+    container_name: openclaw
+    cap_drop:
+      - NET_RAW
+      - NET_ADMIN
+    security_opt:
+      - no-new-privileges:true
+    environment:
+      - TZ=${TZ}
+      - ANTHROPIC_API_KEY=${ANTHROPIC_API_KEY}
+      - DISCORD_BOT_TOKEN=${DISCORD_BOT_TOKEN}
+    volumes:
+      - ${APPDATA}/openclaw/config:/home/node/.openclaw
+      - ${APPDATA}/openclaw/auth-secret:/home/node/.config/openclaw
+      # Agent workspace lives on its own share -- never mount other shares
+      # here. Anything the agent can read, a prompt injection can read.
+      - ${CLAW_WORKSPACE}:/home/node/.openclaw/workspace
+    ports:
+      # LAN access to the dashboard. Public access goes through cloudflared
+      # below, never through a port-forward or SWAG.
+      - ${OPENCLAW_HOST_PORT}:18789
+    healthcheck:
+      test: ["CMD", "curl", "-fsS", "http://127.0.0.1:18789/healthz"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 1m
+    restart: unless-stopped
+    networks:
+      - claw-net
+    labels:
+      net.unraid.docker.webui: "http://[IP]:[PORT:${OPENCLAW_HOST_PORT}]"
+      net.unraid.docker.icon: "https://avatars.githubusercontent.com/u/252820863?s=200&v=4"
+      net.unraid.docker.shell: "sh"
+
+  # Outbound-only tunnel that publishes the dashboard at a public hostname
+  # without opening any host ports. Ingress (hostname -> http://openclaw:18789)
+  # and the Cloudflare Access policy in front of it are configured in the
+  # Cloudflare Zero Trust dashboard, not here.
+  cloudflared:
+    image: cloudflare/cloudflared:latest
+    container_name: cloudflared-claw
+    command: tunnel --no-autoupdate run
+    depends_on:
+      - openclaw
+    environment:
+      - TZ=${TZ}
+      - TUNNEL_TOKEN=${CLOUDFLARED_TUNNEL_TOKEN}
+    restart: unless-stopped
+    networks:
+      - claw-net
+
+  # Vector-search agent memory, exposed to OpenClaw as an MCP server at
+  # http://memorizer:8080/mcp (container-internal). Web UI has no auth --
+  # LAN only, do not route it through the tunnel.
+  memorizer:
+    image: petabridge/memorizer:latest
+    container_name: memorizer
+    depends_on:
+      memorizer-postgres:
+        condition: service_healthy
+      memorizer-ollama:
+        condition: service_healthy
+    environment:
+      - TZ=${TZ}
+      - ConnectionStrings__Storage=Host=memorizer-postgres;Port=5432;Database=postgmem;Username=postgres;Password=${MEMORIZER_DB_PASSWORD}
+      - MEMORIZER_Embeddings__ApiUrl=http://memorizer-ollama:11434
+      - MEMORIZER_Embeddings__Model=all-minilm:33m-l12-v2-fp16
+      - MEMORIZER_LLM__ApiUrl=http://memorizer-ollama:11434
+      - MEMORIZER_LLM__Model=qwen2:0.5b
+      - MEMORIZER_LLM__Timeout=00:02:00
+      - MEMORIZER_LLM__Chunking__MinCharactersForChunking=2000
+      - MEMORIZER_LLM__Chunking__TargetChunkSize=1500
+      - MEMORIZER_Server__CanonicalUrl=${MEMORIZER_CANONICAL_URL}
+      - ASPNETCORE_ENVIRONMENT=Development
+    ports:
+      - ${MEMORIZER_HOST_PORT}:8080
+    healthcheck:
+      test: ["CMD-SHELL", "wget --no-verbose --tries=1 --spider http://localhost:8080/healthz || exit 1"]
+      interval: 5s
+      timeout: 5s
+      retries: 3
+      start_period: 10s
+    restart: unless-stopped
+    networks:
+      - claw-net
+    labels:
+      net.unraid.docker.webui: "http://[IP]:[PORT:${MEMORIZER_HOST_PORT}]"
+      net.unraid.docker.icon: "https://avatars.githubusercontent.com/u/8763546?s=200&v=4"
+      net.unraid.docker.shell: "sh"
+
+  # No published port -- reachable only on claw-net.
+  memorizer-postgres:
+    image: pgvector/pgvector:pg17
+    container_name: memorizer-postgres
+    environment:
+      - TZ=${TZ}
+      - POSTGRES_USER=postgres
+      - POSTGRES_PASSWORD=${MEMORIZER_DB_PASSWORD}
+      - POSTGRES_DB=postgmem
+    volumes:
+      - ${APPDATA}/memorizer/postgres:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+    restart: unless-stopped
+    networks:
+      - claw-net
+
+  # Local embedding + chunking models for memorizer. CPU-only is fine for
+  # the small models below. No published port -- reachable only on claw-net.
+  # Pulls its own models on start (a no-op once they exist) instead of using
+  # upstream's one-shot init container -- an exited container makes the
+  # Compose Manager UI show the whole stack as stopped. The healthcheck
+  # only passes once both models are present, which is what gates memorizer.
+  memorizer-ollama:
+    image: ollama/ollama
+    container_name: memorizer-ollama
+    entrypoint: ["/bin/sh", "-c"]
+    command: >
+      "ollama serve &
+      until ollama list >/dev/null 2>&1; do sleep 2; done &&
+      ollama pull all-minilm:33m-l12-v2-fp16 &&
+      ollama pull qwen2:0.5b &&
+      wait"
+    environment:
+      - TZ=${TZ}
+    volumes:
+      - ${APPDATA}/memorizer/ollama:/root/.ollama
+    healthcheck:
+      test: ["CMD-SHELL", "ollama list | grep -q 'all-minilm:33m-l12-v2-fp16' && ollama list | grep -q 'qwen2:0.5b'"]
+      interval: 10s
+      timeout: 5s
+      retries: 60
+      start_period: 30s
+    restart: unless-stopped
+    networks:
+      - claw-net
