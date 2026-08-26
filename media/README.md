@@ -28,6 +28,32 @@ bridge. SWAG fronts the other UIs and owns 80/443/81 on the host.
 1. Copy `.env.example` to `.env` and fill it in.
 2. Place the ProtonVPN WireGuard config (below) — the one manual step compose can't do.
 3. Start the stack from the Compose Manager plugin.
+4. Copy the hardened SWAG dashboard conf into place (below) — SWAG must have started
+   once so its appdata tree exists.
+
+## SWAG dashboard
+
+The dashboard comes from the `swag-dashboard` docker mod (`DOCKER_MODS` on the `swag`
+service) and is reachable only via `http://<server-ip>:81`. The mod's stock conf also
+contains a `listen 443` server block for `dashboard.*`, which served the dashboard to
+the public internet until it was replaced on 2026-08-25. The tracked
+[`swag/proxy-confs/dashboard.subdomain.conf`](swag/proxy-confs/dashboard.subdomain.conf)
+keeps only the port-81 server block, so the dashboard doesn't exist on the
+public-facing 443 at all (port 81 isn't forwarded at the router, and the conf allows
+only private source addresses on top of that).
+
+The live copy is in appdata, which is gitignored like every other per-container config:
+
+```sh
+cp /path/to/repo/media/swag/proxy-confs/dashboard.subdomain.conf /mnt/user/appdata/swag/nginx/proxy-confs/
+docker exec swag nginx -t
+```
+
+With `SWAG_AUTORELOAD=true` nginx picks the change up without a restart; the `nginx -t`
+just confirms it parses. The mod installs its stock conf only when no
+`dashboard.subdomain.conf` exists, so the tracked copy survives restarts and mod
+updates — but when deploying fresh, make sure the `cp` **overwrites** the stock file
+the mod already dropped in appdata.
 
 ## qBittorrent — ProtonVPN over WireGuard
 
