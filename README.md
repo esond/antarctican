@@ -24,7 +24,7 @@ Each top-level directory is one independently-deployable stack via the Unraid Do
 - Host ports come from `.env` (`${SERVICE_HOST_PORT}`); container-internal ports stay literal. Remap by editing `.env`, never the compose file.
 - Each stack has its own `<stack>-net` bridge network. `plex` and `urbackup` use `network_mode: host` (intentional — Plex/UrBackup discovery).
 - `restart: unless-stopped` everywhere.
-- SWAG (in `media/`) owns 80/443/81 on the host and reverse-proxies `antarctican.tv` (wildcard cert via Cloudflare DNS-01 — Cloudflare does DNS and cert validation only; traffic hits the WAN IP directly, not Cloudflare's proxy). Other UIs live on non-standard ports behind it.
+- SWAG (in `media/`) owns 80/443/81 on the host and reverse-proxies the domain in `${SWAG_URL}` (wildcard cert via Cloudflare DNS-01 — Cloudflare does DNS and cert validation only; traffic hits the WAN IP directly, not Cloudflare's proxy). Other UIs live on non-standard ports behind it.
 
 ## Requirements
 
