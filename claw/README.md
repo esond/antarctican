@@ -1,9 +1,9 @@
 # claw stack
 
 Personal AI assistant: OpenClaw as the agent gateway (Discord channel, Anthropic API for
-models) with Memorizer as its long-term memory over MCP and, optionally, its own Fastmail
-mailbox over Fastmail's hosted MCP endpoint. Deployed from `docker-compose.claw.yml` via
-the Docker Compose Manager plugin.
+models), using its builtin memory with a local embedding model for semantic recall and,
+optionally, its own Fastmail mailbox over Fastmail's hosted MCP endpoint. Deployed from
+`docker-compose.claw.yml` via the Docker Compose Manager plugin.
 
 ## Services
 
@@ -11,13 +11,10 @@ the Docker Compose Manager plugin.
 |---|---|---|---|
 | `openclaw` | ghcr.io/openclaw/openclaw | Agent gateway + dashboard | `${OPENCLAW_HOST_PORT}` |
 | `cloudflared` | cloudflare/cloudflared | Publishes the dashboard at a public hostname via Cloudflare Tunnel | — |
-| `memorizer` | petabridge/memorizer | Vector-search agent memory (MCP server) | `${MEMORIZER_HOST_PORT}` |
-| `memorizer-postgres` | pgvector/pgvector | Memory storage | — |
-| `memorizer-ollama` | ollama/ollama | Local embedding + chunking models for Memorizer (pulls them on start) | — |
+| `ollama` | ollama/ollama | Local embedding model for OpenClaw's memory search (pulls it on start) | — |
 
 OpenClaw runs as its upstream fixed user (`node`, UID 1000) — it doesn't honor
-`PUID`/`PGID`, same situation as Seerr. Postgres and Ollama likewise use their upstream
-users.
+`PUID`/`PGID`, same situation as Seerr. Ollama likewise uses its upstream user.
 
 ## Deploying
 
@@ -52,9 +49,8 @@ users.
      ghcr.io/openclaw/openclaw:latest onboard
    ```
 
-6. Start the stack from the Compose Manager plugin. On first start `memorizer-ollama`
-   pulls its two small models (~100MB) and only reports healthy once both are present;
-   `memorizer` waits for that before coming up.
+6. Start the stack from the Compose Manager plugin. On first start `ollama` pulls its
+   embedding model (~640MB) and only reports healthy once it's present.
 7. Enable the Discord plugin — onboarding installs it without explicit trust, so the
    bot won't start until it's enabled:
 
@@ -67,16 +63,36 @@ users.
    **Server Members** privileged intents. Its presence shows offline by design — DM
    it anyway; the first DM returns a pairing code, approved with
    `docker exec openclaw openclaw pairing approve discord <code>`.
-8. Register Memorizer as an MCP server, pointing at the container-internal address:
+8. Point memory search at the local embedding model. The builtin memory engine defaults
+   to OpenAI embeddings, and without an embedding provider it falls back to keyword-only
+   (BM25) search. One validated write, so it can't half-apply:
 
    ```sh
-   docker exec openclaw openclaw mcp add memorizer --url http://memorizer:8080/mcp --transport streamable-http
-   docker exec openclaw openclaw mcp probe memorizer
+   echo '{ agents: { defaults: { memorySearch: { enabled: true, provider: "ollama", model: "qwen3-embedding:0.6b", remote: { baseUrl: "http://ollama:11434", apiKey: "ollama-local" } } } } }' \
+     | docker exec -i openclaw openclaw config patch --stdin
+   docker restart openclaw
+   docker exec openclaw openclaw memory index --force
+   docker exec openclaw openclaw memory status
    ```
 
-   Then add a line to the agent's `TOOLS.md` in the workspace telling it to use the
-   memory tools (`store`, `searchMemories`, `get`) — Memorizer's README has a
-   recommended snippet.
+   The path is `agents.defaults.memorySearch`, **not** the `memory.search` that
+   docs.openclaw.ai documents — that key doesn't exist on 2026.7.1 and the patch is
+   rejected. `openclaw config schema` is the authoritative source when they disagree.
+   Use the native Ollama URL, not the `/v1` OpenAI-compatible one. `apiKey` is a
+   placeholder Ollama ignores.
+
+   The `memory index --force` is required, not optional: changing embedding provider or
+   model invalidates the vector index identity, and OpenClaw pauses vector search rather
+   than silently re-embedding. Without it the config is correct and recall still returns
+   nothing. `memory status` should report a non-zero `Indexed:` and a `Vector dims:` line.
+
+   `sources` defaults to `["memory"]`, which covers `MEMORY.md` and `memory/` but **not**
+   `USER.md` — that file is injected into context every session rather than retrieved. Add
+   it to `extraPaths` if it should be searchable too.
+
+   `qwen3-embedding:0.6b` is the best quality-per-MB option that runs on CPU here;
+   `embeddinggemma` is an equivalent alternative and `nomic-embed-text` a lighter one.
+   Changing model later means re-embedding every note, so pick before the memory grows.
 
 ### Hardening
 
@@ -108,6 +124,10 @@ rest; pin to an exact version if updates should be deliberate.
   for the nested workspace bind. Deleting it on the host disconnects the live mount
   (the container sees ENOENT on its workspace); recreate the directory and
   `docker restart openclaw` to recover.
+- `openclaw memory status --deep` can report `Unknown memory embedding provider: ollama`
+  even while `memory_search` works fine at runtime
+  ([openclaw#66077](https://github.com/openclaw/openclaw/issues/66077)) — it's a
+  diagnostic-path bug, not a broken config. Trust an actual recall test over it.
 - A `WorkspaceVanishedError` at message time means the workspace content no longer
   matches the attestation in `config/workspace-attestations/` — usually an empty or
   wrong mount. Fix the workspace rather than deleting attestations.
@@ -143,8 +163,7 @@ DNSimple):
 
 Result: the dashboard answers at a real public URL, but Cloudflare demands your identity
 before any request reaches the container, no host ports are open, and OpenClaw's own
-gateway token auth remains as a second layer. The Memorizer UI has no authentication —
-leave it LAN-only, never add it to the tunnel.
+gateway token auth remains as a second layer.
 
 ## Fastmail (agent email)
 
@@ -377,7 +396,6 @@ token with **Send email**, registered as its own MCP server so the gate can targ
 
 - [OpenClaw docs — Docker install](https://docs.openclaw.ai/install/docker)
 - [OpenClaw docs — gateway configuration](https://docs.openclaw.ai/gateway/configuration)
-- [petabridge/memorizer](https://github.com/petabridge/memorizer)
 - [Fastmail — an MCP server for Fastmail](https://www.fastmail.com/blog/an-mcp-server-for-fastmail/)
 - [Fastmail — API tokens](https://www.fastmail.help/hc/en-us/articles/5254602856719-API-tokens)
 - [Fastmail — connecting AI tools via the MCP server](https://www.fastmail.help/hc/en-us/articles/15869557281295-Connecting-AI-tools-via-Fastmail-s-MCP-server)
