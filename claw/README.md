@@ -67,13 +67,26 @@ OpenClaw runs as its upstream fixed user (`node`, UID 1000) — it doesn't honor
 
 6. Start the stack from the Compose Manager plugin. On first start `ollama` pulls its
    embedding model (~640MB) and only reports healthy once it's present.
-7. Enable the Discord plugin — onboarding installs it without explicit trust, so the
-   bot won't start until it's enabled:
+7. Enable the plugins this stack needs. The image ships ~70 stock plugins with
+   nearly all of them disabled — `openclaw plugins list` shows the ratio. Two matter
+   here. The **anthropic** provider plugin supplies the live model catalog; without it
+   the gateway knows only the models baked into core, so anything newer than those
+   won't resolve — name one in `agents.defaults.models` and the request dies with a
+   `FailoverError` whose wording blames the account or the model instead.
+   **discord** is installed by onboarding but without explicit trust, so the bot won't
+   start until it's enabled:
 
    ```sh
+   docker exec openclaw openclaw config set plugins.entries.anthropic.enabled true
    docker exec openclaw openclaw config set plugins.entries.discord.enabled true
    docker restart openclaw
    ```
+
+   The gateway logs which plugins actually loaded on startup (`http server listening
+   (N plugins: ...)`) — that line, not the config write, is the confirmation. Don't
+   hand-register models under `models.providers.anthropic.models[]` to route around a
+   thin catalog; with the plugin enabled the catalog comes from upstream and stays
+   current on its own.
 
    In the Discord developer portal, the bot needs the **Message Content** and
    **Server Members** privileged intents. Its presence shows offline by design — DM
@@ -84,11 +97,22 @@ OpenClaw runs as its upstream fixed user (`node`, UID 1000) — it doesn't honor
    (BM25) search. One validated write, so it can't half-apply:
 
    ```sh
+   docker exec openclaw openclaw config set plugins.entries.ollama.enabled true
    echo '{ agents: { defaults: { memorySearch: { enabled: true, provider: "ollama", model: "qwen3-embedding:0.6b", remote: { baseUrl: "http://ollama:11434", apiKey: "ollama-local" } } } } }' \
      | docker exec -i openclaw openclaw config patch --stdin
    docker restart openclaw
    docker exec openclaw openclaw memory index --force
    docker exec openclaw openclaw memory status
+   ```
+
+   The **ollama** provider plugin is what registers the embedding provider, and it
+   ships disabled like the ones in step 7. Config alone looks like it worked — every
+   write is accepted — and the only sign is one line at gateway startup:
+
+   ```
+   memorySearch.provider="ollama" is configured, but no loaded plugin registered a
+   memory embedding provider that can serve "ollama". Semantic memory recall will
+   fall back to keyword/FTS-only search.
    ```
 
    The path is `agents.defaults.memorySearch`, **not** the `memory.search` that
@@ -157,12 +181,18 @@ insecure auth on, and `gateway.bind lan` makes the origin/rate-limit settings ma
 
 ```sh
 docker exec openclaw openclaw config set gateway.controlUi.allowInsecureAuth false
-docker exec openclaw openclaw config set plugins.allow '["discord","browser"]'
+docker exec openclaw openclaw config set plugins.allow '["anthropic","discord","ollama","browser"]'
 docker exec openclaw openclaw config set gateway.controlUi.allowedOrigins '["https://claw.example.com"]'
 docker exec openclaw openclaw config set gateway.auth.rateLimit '{"maxAttempts":10,"windowMs":60000,"lockoutMs":300000}'
 docker restart openclaw
 docker exec openclaw openclaw security audit
 ```
+
+`plugins.allow` is exhaustive, not additive: a plugin missing from it stays unloaded
+however it is configured elsewhere, so every plugin enabled in the steps above has to
+appear here. The list is also validated — an id the image doesn't ship is rejected as
+`plugin not found`, which makes it a cheap way to check a name.
+
 
 The audit should come back with zero criticals. A warn about the unpinned
 `@openclaw/discord` npm spec is accepted — it matters at plugin-update time, not at
@@ -180,6 +210,14 @@ rest; pin to an exact version if updates should be deliberate.
   for the nested workspace bind. Deleting it on the host disconnects the live mount
   (the container sees ENOENT on its workspace); recreate the directory and
   `docker restart openclaw` to recover.
+- `openclaw models list` dies with `Cannot read properties of undefined (reading
+  'input')` once the `anthropic` provider plugin is enabled (2026.7.1). The stack
+  trace lands in `applyAnthropicSonnet5Cost` while normalizing configured rows, and it
+  fires whatever is in `agents.defaults.models` — including a list of nothing but
+  current models. The gateway resolves models by another path and is unaffected: the
+  agent keeps answering, and the dashboard still reports the model in use. Don't
+  rearrange `agents.defaults.models` or hand-register `models.providers.anthropic`
+  trying to clear it.
 - `openclaw memory status --deep` can report `Unknown memory embedding provider: ollama`
   even while `memory_search` works fine at runtime
   ([openclaw#66077](https://github.com/openclaw/openclaw/issues/66077)) — it's a
