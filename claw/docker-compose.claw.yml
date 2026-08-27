@@ -80,7 +80,7 @@ services:
     networks:
       - claw-net
     labels:
-      net.unraid.docker.icon: "https://avatars.githubusercontent.com/u/51244358?s=200&v=4"
+      net.unraid.docker.icon: "https://avatars.githubusercontent.com/u/30044?s=60&v=4"
 
   # Local embedding model for OpenClaw's builtin memory search, reached at
   # http://ollama:11434 on claw-net. CPU-only is fine for a model this small.
