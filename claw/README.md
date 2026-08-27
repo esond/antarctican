@@ -109,35 +109,46 @@ OpenClaw runs as its upstream fixed user (`node`, UID 1000) — it doesn't honor
    `qwen3-embedding:0.6b` is the best quality-per-MB option that runs on CPU here;
    `embeddinggemma` is an equivalent alternative and `nomic-embed-text` a lighter one.
    Changing model later means re-embedding every note, so pick before the memory grows.
-9. Enable the browser tool, attached to the `claw-browser` sidecar over CDP
-   (substitute the `BROWSERLESS_TOKEN` value from `.env`):
+9. Enable the browser tool, attached to the `claw-browser` sidecar over CDP.
+   Four gates, all required — the docs mention only the first (substitute the
+   `BROWSERLESS_TOKEN` value from `.env`):
 
    ```sh
    docker exec openclaw openclaw config set browser.enabled true
-   docker exec openclaw openclaw config set browser.profiles.browserless '{"cdpUrl":"ws://claw-browser:3000?token=<BROWSERLESS_TOKEN>","attachOnly":true}'
+   docker exec openclaw openclaw config set browser.profiles.browserless '{"cdpUrl":"ws://claw-browser:3000?token=<BROWSERLESS_TOKEN>","attachOnly":true,"color":"#f97316"}'
+   docker exec openclaw openclaw config set plugins.entries.browser.enabled true
+   docker exec openclaw openclaw config set tools.alsoAllow '["browser"]'
    docker restart openclaw
    ```
 
-   `attachOnly: true` is required — without it OpenClaw treats the profile as a
-   locally-managed browser and tries to launch Chromium inside its own container,
-   which fails (no browser binary there; that's the sidecar's job).
-10. Enable the 1Password plugin. Create a **service account** at
-    [1password.com](https://developer.1password.com/docs/service-accounts/) scoped to
-    read-only on the agent's dedicated vault (see Security notes — never grant it
-    personal vaults), then:
+   - `attachOnly: true` — without it OpenClaw treats the profile as a
+     locally-managed browser and tries to launch Chromium inside its own
+     container, which fails (no browser binary there; that's the sidecar's job).
+   - `color` (any CSS color) is required by the config schema even though the
+     docs don't list it — the profile write is rejected without it.
+   - The browser plugin ships disabled, same as Discord in step 7. If
+     `plugins.allow` is set (Hardening below), `browser` must be on it too.
+   - The onboarding tool profile (`tools.profile: "coding"`) excludes the UI
+     tool group, so the plugin can be enabled and healthy while the agent still
+     has no browser tool. `tools.alsoAllow` grants just the browser tools
+     without widening the whole profile to `full`.
+10. 1Password. The `onepassword` plugin that docs.openclaw.ai describes does not
+    exist in 2026.7.1 — `plugins.allow` rejects the id as `plugin not found` — so
+    the plugin/credentials-file steps there don't apply. What this image has is
+    the `op` CLI (bind-mounted in step 3) authenticated by a service-account
+    token from the environment, driven by the bundled 1password skill or the
+    agent's exec tool.
+
+    Create a **service account** at
+    [1password.com](https://developer.1password.com/docs/service-accounts/) scoped
+    **read-only to the agent's dedicated vault** (see Security notes — never
+    grant it personal vaults), put its `ops_...` token in `.env` as
+    `OP_SERVICE_ACCOUNT_TOKEN`, and update the stack. Sanity check:
 
     ```sh
-    docker exec openclaw op --version   # verifies the bind-mounted CLI
-    docker exec openclaw openclaw plugins enable onepassword
-    docker exec openclaw sh -c 'mkdir -p ~/.openclaw/credentials/onepassword && chmod 700 ~/.openclaw/credentials/onepassword'
-    docker exec -i openclaw sh -c 'cat > ~/.openclaw/credentials/onepassword/service-account-token && chmod 600 ~/.openclaw/credentials/onepassword/service-account-token'
-    # paste the ops_... token, then Enter and Ctrl-D
-    docker restart openclaw
+    docker exec openclaw op --version    # the bind-mounted CLI
+    docker exec openclaw op vault list   # should list exactly the agent vault
     ```
-
-    The credentials dir lives under the `config` bind mount, so the token survives
-    container recreation. If the Hardening step below was already applied, widen the
-    plugin allowlist to `'["discord","onepassword"]'` or the plugin won't load.
 
 ### Hardening
 
@@ -146,7 +157,7 @@ insecure auth on, and `gateway.bind lan` makes the origin/rate-limit settings ma
 
 ```sh
 docker exec openclaw openclaw config set gateway.controlUi.allowInsecureAuth false
-docker exec openclaw openclaw config set plugins.allow '["discord","onepassword"]'
+docker exec openclaw openclaw config set plugins.allow '["discord","browser"]'
 docker exec openclaw openclaw config set gateway.controlUi.allowedOrigins '["https://claw.example.com"]'
 docker exec openclaw openclaw config set gateway.auth.rateLimit '{"maxAttempts":10,"windowMs":60000,"lockoutMs":300000}'
 docker restart openclaw
@@ -425,7 +436,7 @@ token with **Send email**, registered as its own MCP server so the gate can targ
   them in a dedicated 1Password vault so rotation is one place.
 - The 1Password service account is the enforcement edge of that rule: scope it read-only
   to the agent vault and nothing else. Whatever it can read, a prompt injection can read —
-  the plugin has no human-approval gate on this runtime.
+  there is no human-approval gate on this runtime.
 - `claw-browser` sits on the LAN, so the browser tool can reach internal HTTP UIs (Unraid,
   the router) as rendered pages. That's within the trust already granted — the
   agent has network access regardless — but it's the reason the sidecar publishes no port

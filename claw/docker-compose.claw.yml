@@ -18,6 +18,10 @@ services:
       - TZ=${TZ}
       - ANTHROPIC_API_KEY=${ANTHROPIC_API_KEY}
       - DISCORD_BOT_TOKEN=${DISCORD_BOT_TOKEN}
+      # Authenticates the bind-mounted op CLI (README step 10). The service
+      # account must be scoped read-only to the agent vault -- anything it
+      # can read, a prompt injection can read.
+      - OP_SERVICE_ACCOUNT_TOKEN=${OP_SERVICE_ACCOUNT_TOKEN}
     volumes:
       - ${APPDATA}/openclaw/config:/home/node/.openclaw
       - ${APPDATA}/openclaw/auth-secret:/home/node/.config/openclaw
