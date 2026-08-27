@@ -18,12 +18,22 @@ services:
       - TZ=${TZ}
       - ANTHROPIC_API_KEY=${ANTHROPIC_API_KEY}
       - DISCORD_BOT_TOKEN=${DISCORD_BOT_TOKEN}
+      # Authenticates the bind-mounted op CLI (README step 10). The service
+      # account must be scoped read-only to the agent vault -- anything it
+      # can read, a prompt injection can read.
+      - OP_SERVICE_ACCOUNT_TOKEN=${OP_SERVICE_ACCOUNT_TOKEN}
     volumes:
       - ${APPDATA}/openclaw/config:/home/node/.openclaw
       - ${APPDATA}/openclaw/auth-secret:/home/node/.config/openclaw
       # Agent workspace lives on its own share -- never mount other shares
       # here. Anything the agent can read, a prompt injection can read.
       - ${CLAW_WORKSPACE}:/home/node/.openclaw/workspace
+      # 1Password CLI, driven by the bundled 1password skill and
+      # authenticated by OP_SERVICE_ACCOUNT_TOKEN below (README step 10) --
+      # a static binary fetched onto the host. Download it BEFORE starting
+      # the stack: if the file is missing, Docker creates a directory at
+      # this path and the mount breaks.
+      - ${APPDATA}/openclaw/bin/op:/usr/local/bin/op:ro
     ports:
       # LAN access to the dashboard. Public access goes through cloudflared
       # below, never through a port-forward or SWAG.
@@ -58,6 +68,24 @@ services:
     restart: unless-stopped
     networks:
       - claw-net
+    labels:
+      net.unraid.docker.icon: "https://avatars.githubusercontent.com/u/314135?s=200&v=4"
+
+  # Headless Chromium for the agent's browser tool, attached over CDP
+  # (browser.profiles config on the openclaw side -- see README). No
+  # published port: reachable only on claw-net, and the token gates CDP
+  # access on top of that.
+  claw-browser:
+    image: ghcr.io/browserless/chromium:latest
+    container_name: claw-browser
+    environment:
+      - TZ=${TZ}
+      - TOKEN=${BROWSERLESS_TOKEN}
+    restart: unless-stopped
+    networks:
+      - claw-net
+    labels:
+      net.unraid.docker.icon: "https://avatars.githubusercontent.com/u/30044?s=200&v=4"
 
   # Local embedding model for OpenClaw's builtin memory search, reached at
   # http://ollama:11434 on claw-net. CPU-only is fine for a model this small.
@@ -87,3 +115,5 @@ services:
     restart: unless-stopped
     networks:
       - claw-net
+    labels:
+      net.unraid.docker.icon: "https://avatars.githubusercontent.com/u/151674099?s=200&v=4"
