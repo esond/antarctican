@@ -28,10 +28,11 @@ services:
       # Agent workspace lives on its own share -- never mount other shares
       # here. Anything the agent can read, a prompt injection can read.
       - ${CLAW_WORKSPACE}:/home/node/.openclaw/workspace
-      # 1Password CLI for the onepassword plugin -- a static binary fetched
-      # onto the host (see README). Download it BEFORE starting the stack:
-      # if the file is missing, Docker creates a directory at this path and
-      # the mount breaks.
+      # 1Password CLI, driven by the bundled 1password skill and
+      # authenticated by OP_SERVICE_ACCOUNT_TOKEN below (README step 10) --
+      # a static binary fetched onto the host. Download it BEFORE starting
+      # the stack: if the file is missing, Docker creates a directory at
+      # this path and the mount breaks.
       - ${APPDATA}/openclaw/bin/op:/usr/local/bin/op:ro
     ports:
       # LAN access to the dashboard. Public access goes through cloudflared
@@ -84,7 +85,7 @@ services:
     networks:
       - claw-net
     labels:
-      net.unraid.docker.icon: "https://avatars.githubusercontent.com/u/30044?s=60&v=4"
+      net.unraid.docker.icon: "https://avatars.githubusercontent.com/u/30044?s=200&v=4"
 
   # Local embedding model for OpenClaw's builtin memory search, reached at
   # http://ollama:11434 on claw-net. CPU-only is fine for a model this small.
