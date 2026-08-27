@@ -59,87 +59,27 @@ services:
     networks:
       - claw-net
 
-  # Vector-search agent memory, exposed to OpenClaw as an MCP server at
-  # http://memorizer:8080/mcp (container-internal). Web UI has no auth --
-  # LAN only, do not route it through the tunnel.
-  memorizer:
-    image: petabridge/memorizer:latest
-    container_name: memorizer
-    depends_on:
-      memorizer-postgres:
-        condition: service_healthy
-      memorizer-ollama:
-        condition: service_healthy
-    environment:
-      - TZ=${TZ}
-      - ConnectionStrings__Storage=Host=memorizer-postgres;Port=5432;Database=postgmem;Username=postgres;Password=${MEMORIZER_DB_PASSWORD}
-      - MEMORIZER_Embeddings__ApiUrl=http://memorizer-ollama:11434
-      - MEMORIZER_Embeddings__Model=all-minilm:33m-l12-v2-fp16
-      - MEMORIZER_LLM__ApiUrl=http://memorizer-ollama:11434
-      - MEMORIZER_LLM__Model=qwen2:0.5b
-      - MEMORIZER_LLM__Timeout=00:02:00
-      - MEMORIZER_LLM__Chunking__MinCharactersForChunking=2000
-      - MEMORIZER_LLM__Chunking__TargetChunkSize=1500
-      - MEMORIZER_Server__CanonicalUrl=${MEMORIZER_CANONICAL_URL}
-      - ASPNETCORE_ENVIRONMENT=Development
-    ports:
-      - ${MEMORIZER_HOST_PORT}:8080
-    healthcheck:
-      test: ["CMD-SHELL", "wget --no-verbose --tries=1 --spider http://localhost:8080/healthz || exit 1"]
-      interval: 5s
-      timeout: 5s
-      retries: 3
-      start_period: 10s
-    restart: unless-stopped
-    networks:
-      - claw-net
-    labels:
-      net.unraid.docker.webui: "http://[IP]:[PORT:${MEMORIZER_HOST_PORT}]"
-      net.unraid.docker.icon: "https://avatars.githubusercontent.com/u/8763546?s=200&v=4"
-      net.unraid.docker.shell: "sh"
-
-  # No published port -- reachable only on claw-net.
-  memorizer-postgres:
-    image: pgvector/pgvector:pg17
-    container_name: memorizer-postgres
-    environment:
-      - TZ=${TZ}
-      - POSTGRES_USER=postgres
-      - POSTGRES_PASSWORD=${MEMORIZER_DB_PASSWORD}
-      - POSTGRES_DB=postgmem
-    volumes:
-      - ${APPDATA}/memorizer/postgres:/var/lib/postgresql/data
-    healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U postgres"]
-      interval: 5s
-      timeout: 5s
-      retries: 5
-    restart: unless-stopped
-    networks:
-      - claw-net
-
-  # Local embedding + chunking models for memorizer. CPU-only is fine for
-  # the small models below. No published port -- reachable only on claw-net.
-  # Pulls its own models on start (a no-op once they exist) instead of using
-  # upstream's one-shot init container -- an exited container makes the
-  # Compose Manager UI show the whole stack as stopped. The healthcheck
-  # only passes once both models are present, which is what gates memorizer.
-  memorizer-ollama:
+  # Local embedding model for OpenClaw's builtin memory search, reached at
+  # http://ollama:11434 on claw-net. CPU-only is fine for a model this small.
+  # No published port -- nothing outside the stack needs it.
+  # Pulls its own model on start (a no-op once it exists) instead of using a
+  # one-shot init container -- an exited container makes the Compose Manager
+  # UI show the whole stack as stopped.
+  ollama:
     image: ollama/ollama
-    container_name: memorizer-ollama
+    container_name: claw-ollama
     entrypoint: ["/bin/sh", "-c"]
     command: >
       "ollama serve &
       until ollama list >/dev/null 2>&1; do sleep 2; done &&
-      ollama pull all-minilm:33m-l12-v2-fp16 &&
-      ollama pull qwen2:0.5b &&
+      ollama pull qwen3-embedding:0.6b &&
       wait"
     environment:
       - TZ=${TZ}
     volumes:
-      - ${APPDATA}/memorizer/ollama:/root/.ollama
+      - ${APPDATA}/claw-ollama:/root/.ollama
     healthcheck:
-      test: ["CMD-SHELL", "ollama list | grep -q 'all-minilm:33m-l12-v2-fp16' && ollama list | grep -q 'qwen2:0.5b'"]
+      test: ["CMD-SHELL", "ollama list | grep -q 'qwen3-embedding:0.6b'"]
       interval: 10s
       timeout: 5s
       retries: 60
