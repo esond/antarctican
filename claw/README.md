@@ -181,7 +181,8 @@ insecure auth on, and `gateway.bind lan` makes the origin/rate-limit settings ma
 
 ```sh
 docker exec openclaw openclaw config set gateway.controlUi.allowInsecureAuth false
-docker exec openclaw openclaw config set plugins.allow '["anthropic","discord","ollama","browser"]'
+docker exec openclaw openclaw config set plugins.allow '["anthropic","discord","ollama","browser","memory-core"]'
+docker exec openclaw openclaw config set plugins.bundledDiscovery allowlist
 docker exec openclaw openclaw config set gateway.controlUi.allowedOrigins '["https://claw.example.com"]'
 docker exec openclaw openclaw config set gateway.auth.rateLimit '{"maxAttempts":10,"windowMs":60000,"lockoutMs":300000}'
 docker restart openclaw
@@ -192,6 +193,17 @@ docker exec openclaw openclaw security audit
 however it is configured elsewhere, so every plugin enabled in the steps above has to
 appear here. The list is also validated — an id the image doesn't ship is rejected as
 `plugin not found`, which makes it a cheap way to check a name.
+
+`memory-core` is on the list even though no step above enables it: it ships enabled and
+backs the memory search from step 8. On 2026.7.1 the allowlist gates **bundled** plugins
+too, so leaving it off drops memory search — the same silent degradation as an unenabled
+`ollama`, one layer up. `plugins.bundledDiscovery` is what selects that behavior, and it
+must be set explicitly: on a config that predates the key, `openclaw doctor` offers to
+write `"compat"`, which restores the legacy carve-out where bundled plugins load whether
+or not they're listed. Take `"allowlist"` instead — `compat` reintroduces exactly the
+implicit loading this section exists to prevent. Order matters when applying it to a
+running gateway: widen the list first, then set the mode, or the restart in between drops
+`memory-core`.
 
 
 The audit should come back with zero criticals. A warn about the unpinned
