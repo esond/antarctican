@@ -24,6 +24,11 @@ services:
       # Agent workspace lives on its own share -- never mount other shares
       # here. Anything the agent can read, a prompt injection can read.
       - ${CLAW_WORKSPACE}:/home/node/.openclaw/workspace
+      # 1Password CLI for the onepassword plugin -- a static binary fetched
+      # onto the host (see README). Download it BEFORE starting the stack:
+      # if the file is missing, Docker creates a directory at this path and
+      # the mount breaks.
+      - ${APPDATA}/openclaw/bin/op:/usr/local/bin/op:ro
     ports:
       # LAN access to the dashboard. Public access goes through cloudflared
       # below, never through a port-forward or SWAG.
@@ -55,6 +60,20 @@ services:
     environment:
       - TZ=${TZ}
       - TUNNEL_TOKEN=${CLOUDFLARED_TUNNEL_TOKEN}
+    restart: unless-stopped
+    networks:
+      - claw-net
+
+  # Headless Chromium for the agent's browser tool, attached over CDP
+  # (browser.profiles config on the openclaw side -- see README). No
+  # published port: reachable only on claw-net, and the token gates CDP
+  # access on top of that.
+  claw-browser:
+    image: ghcr.io/browserless/chromium:latest
+    container_name: claw-browser
+    environment:
+      - TZ=${TZ}
+      - TOKEN=${BROWSERLESS_TOKEN}
     restart: unless-stopped
     networks:
       - claw-net

@@ -11,6 +11,7 @@ optionally, its own Fastmail mailbox over Fastmail's hosted MCP endpoint. Deploy
 |---|---|---|---|
 | `openclaw` | ghcr.io/openclaw/openclaw | Agent gateway + dashboard | `${OPENCLAW_HOST_PORT}` |
 | `cloudflared` | cloudflare/cloudflared | Publishes the dashboard at a public hostname via Cloudflare Tunnel | — |
+| `claw-browser` | ghcr.io/browserless/chromium | Headless Chromium for the agent's browser tool (CDP) | — |
 | `ollama` | ollama/ollama | Local embedding model for OpenClaw's memory search (pulls it on start) | — |
 
 OpenClaw runs as its upstream fixed user (`node`, UID 1000) — it doesn't honor
@@ -33,6 +34,21 @@ OpenClaw runs as its upstream fixed user (`node`, UID 1000) — it doesn't honor
    mkdir -p /mnt/user/appdata/openclaw/config /mnt/user/appdata/openclaw/auth-secret
    chown -R 1000:1000 /mnt/user/appdata/openclaw /mnt/user/claw
    ```
+
+   Also fetch the 1Password CLI binary the compose file bind-mounts into the
+   container — **before first start**; if the file is missing at `up` time,
+   Docker creates a directory in its place and the mount breaks:
+
+   ```sh
+   mkdir -p /mnt/user/appdata/openclaw/bin
+   curl -fsSL https://cache.agilebits.com/dist/1P/op2/pkg/v2.39.0/op_linux_amd64_v2.39.0.zip -o /tmp/op.zip
+   unzip -o /tmp/op.zip -d /mnt/user/appdata/openclaw/bin op
+   rm /tmp/op.zip
+   chmod 755 /mnt/user/appdata/openclaw/bin/op
+   ```
+
+   (`op` is a static binary, so a bind mount works across image updates; bump
+   the version in the URL to upgrade it.)
 
 4. Set up the Cloudflare Tunnel (below) and put its token in `.env`, or comment out the
    `cloudflared` service to stay LAN-only for now.
@@ -93,6 +109,35 @@ OpenClaw runs as its upstream fixed user (`node`, UID 1000) — it doesn't honor
    `qwen3-embedding:0.6b` is the best quality-per-MB option that runs on CPU here;
    `embeddinggemma` is an equivalent alternative and `nomic-embed-text` a lighter one.
    Changing model later means re-embedding every note, so pick before the memory grows.
+9. Enable the browser tool, attached to the `claw-browser` sidecar over CDP
+   (substitute the `BROWSERLESS_TOKEN` value from `.env`):
+
+   ```sh
+   docker exec openclaw openclaw config set browser.enabled true
+   docker exec openclaw openclaw config set browser.profiles.browserless '{"cdpUrl":"ws://claw-browser:3000?token=<BROWSERLESS_TOKEN>","attachOnly":true}'
+   docker restart openclaw
+   ```
+
+   `attachOnly: true` is required — without it OpenClaw treats the profile as a
+   locally-managed browser and tries to launch Chromium inside its own container,
+   which fails (no browser binary there; that's the sidecar's job).
+10. Enable the 1Password plugin. Create a **service account** at
+    [1password.com](https://developer.1password.com/docs/service-accounts/) scoped to
+    read-only on the agent's dedicated vault (see Security notes — never grant it
+    personal vaults), then:
+
+    ```sh
+    docker exec openclaw op --version   # verifies the bind-mounted CLI
+    docker exec openclaw openclaw plugins enable onepassword
+    docker exec openclaw sh -c 'mkdir -p ~/.openclaw/credentials/onepassword && chmod 700 ~/.openclaw/credentials/onepassword'
+    docker exec -i openclaw sh -c 'cat > ~/.openclaw/credentials/onepassword/service-account-token && chmod 600 ~/.openclaw/credentials/onepassword/service-account-token'
+    # paste the ops_... token, then Enter and Ctrl-D
+    docker restart openclaw
+    ```
+
+    The credentials dir lives under the `config` bind mount, so the token survives
+    container recreation. If the Hardening step below was already applied, widen the
+    plugin allowlist to `'["discord","onepassword"]'` or the plugin won't load.
 
 ### Hardening
 
@@ -101,7 +146,7 @@ insecure auth on, and `gateway.bind lan` makes the origin/rate-limit settings ma
 
 ```sh
 docker exec openclaw openclaw config set gateway.controlUi.allowInsecureAuth false
-docker exec openclaw openclaw config set plugins.allow '["discord"]'
+docker exec openclaw openclaw config set plugins.allow '["discord","onepassword"]'
 docker exec openclaw openclaw config set gateway.controlUi.allowedOrigins '["https://claw.example.com"]'
 docker exec openclaw openclaw config set gateway.auth.rateLimit '{"maxAttempts":10,"windowMs":60000,"lockoutMs":300000}'
 docker restart openclaw
@@ -378,6 +423,13 @@ token with **Send email**, registered as its own MCP server so the gate can targ
 - Treat every credential the agent can use as exfiltratable via prompt injection: give it
   per-service accounts created for it (its own API keys, never personal logins), and keep
   them in a dedicated 1Password vault so rotation is one place.
+- The 1Password service account is the enforcement edge of that rule: scope it read-only
+  to the agent vault and nothing else. Whatever it can read, a prompt injection can read —
+  the plugin has no human-approval gate on this runtime.
+- `claw-browser` sits on the LAN, so the browser tool can reach internal HTTP UIs (Unraid,
+  the router) as rendered pages. That's within the trust already granted — the
+  agent has network access regardless — but it's the reason the sidecar publishes no port
+  and CDP is token-gated.
 - Skills from ClawHub are third-party code with a documented malware problem. Read a
   skill before installing it; prefer MCP servers for integrations.
 - Forwarded mail is untrusted input that lands directly in the agent's context — a message
@@ -396,8 +448,11 @@ token with **Send email**, registered as its own MCP server so the gate can targ
 
 - [OpenClaw docs — Docker install](https://docs.openclaw.ai/install/docker)
 - [OpenClaw docs — gateway configuration](https://docs.openclaw.ai/gateway/configuration)
+- [OpenClaw docs — browser tool](https://docs.openclaw.ai/tools/browser)
+- [OpenClaw docs — 1Password plugin](https://docs.openclaw.ai/gateway/1password)
+- [OpenClaw docs — MCP CLI](https://docs.openclaw.ai/cli/mcp)
+- [Browserless docs](https://docs.browserless.io/)
 - [Fastmail — an MCP server for Fastmail](https://www.fastmail.com/blog/an-mcp-server-for-fastmail/)
 - [Fastmail — API tokens](https://www.fastmail.help/hc/en-us/articles/5254602856719-API-tokens)
 - [Fastmail — connecting AI tools via the MCP server](https://www.fastmail.help/hc/en-us/articles/15869557281295-Connecting-AI-tools-via-Fastmail-s-MCP-server)
-- [OpenClaw docs — MCP CLI](https://docs.openclaw.ai/cli/mcp)
 - [Cloudflare Tunnel docs](https://developers.cloudflare.com/cloudflare-one/connections/connect-networks/)
