@@ -134,7 +134,7 @@ OpenClaw runs as its upstream fixed user (`node`, UID 1000) — it doesn't honor
    `embeddinggemma` is an equivalent alternative and `nomic-embed-text` a lighter one.
    Changing model later means re-embedding every note, so pick before the memory grows.
 9. Enable the browser tool, attached to the `claw-browser` sidecar over CDP.
-   Four gates, all required — the docs mention only the first (substitute the
+   Five gates, all required — the docs mention only the first (substitute the
    `BROWSERLESS_TOKEN` value from `.env`):
 
    ```sh
@@ -142,6 +142,7 @@ OpenClaw runs as its upstream fixed user (`node`, UID 1000) — it doesn't honor
    docker exec openclaw openclaw config set browser.profiles.browserless '{"cdpUrl":"ws://claw-browser:3000?token=<BROWSERLESS_TOKEN>","attachOnly":true,"color":"#f97316"}'
    docker exec openclaw openclaw config set plugins.entries.browser.enabled true
    docker exec openclaw openclaw config set tools.alsoAllow '["browser"]'
+   docker exec openclaw openclaw config set browser.defaultProfile browserless
    docker restart openclaw
    ```
 
@@ -156,6 +157,19 @@ OpenClaw runs as its upstream fixed user (`node`, UID 1000) — it doesn't honor
      tool group, so the plugin can be enabled and healthy while the agent still
      has no browser tool. `tools.alsoAllow` grants just the browser tools
      without widening the whole profile to `full`.
+   - Defining the profile does not make the tool *use* it. The browser service
+     registers the built-in managed profiles alongside yours (it logs
+     `Browser control service ready (profiles=4)` for a config that names one),
+     and an unset `browser.defaultProfile` resolves to the managed `openclaw`
+     profile. A tool call that doesn't name a profile then tries to launch
+     Chromium locally and fails with `No supported browser found` — the
+     sidecar is never contacted. Naming `browserless` in the prompt works and
+     hides the problem, so test without naming it.
+
+   Verify from the sidecar, not from the agent's answer: `docker logs
+   claw-browser` should show a `ChromiumCDPWebSocketRoute` session opening from
+   the openclaw container. A managed-launch failure produces no browserless
+   activity at all.
 10. 1Password. The `onepassword` plugin that docs.openclaw.ai describes does not
     exist in 2026.7.1 — `plugins.allow` rejects the id as `plugin not found` — so
     the plugin/credentials-file steps there don't apply. What this image has is
@@ -181,7 +195,8 @@ insecure auth on, and `gateway.bind lan` makes the origin/rate-limit settings ma
 
 ```sh
 docker exec openclaw openclaw config set gateway.controlUi.allowInsecureAuth false
-docker exec openclaw openclaw config set plugins.allow '["anthropic","discord","ollama","browser"]'
+docker exec openclaw openclaw config set plugins.allow '["anthropic","discord","ollama","browser","memory-core"]'
+docker exec openclaw openclaw config set plugins.bundledDiscovery allowlist
 docker exec openclaw openclaw config set gateway.controlUi.allowedOrigins '["https://claw.example.com"]'
 docker exec openclaw openclaw config set gateway.auth.rateLimit '{"maxAttempts":10,"windowMs":60000,"lockoutMs":300000}'
 docker restart openclaw
@@ -192,6 +207,17 @@ docker exec openclaw openclaw security audit
 however it is configured elsewhere, so every plugin enabled in the steps above has to
 appear here. The list is also validated — an id the image doesn't ship is rejected as
 `plugin not found`, which makes it a cheap way to check a name.
+
+`memory-core` is on the list even though no step above enables it: it ships enabled and
+backs the memory search from step 8. On 2026.7.1 the allowlist gates **bundled** plugins
+too, so leaving it off drops memory search — the same silent degradation as an unenabled
+`ollama`, one layer up. `plugins.bundledDiscovery` is what selects that behavior, and it
+must be set explicitly: on a config that predates the key, `openclaw doctor` offers to
+write `"compat"`, which restores the legacy carve-out where bundled plugins load whether
+or not they're listed. Take `"allowlist"` instead — `compat` reintroduces exactly the
+implicit loading this section exists to prevent. Order matters when applying it to a
+running gateway: widen the list first, then set the mode, or the restart in between drops
+`memory-core`.
 
 
 The audit should come back with zero criticals. A warn about the unpinned
@@ -218,6 +244,15 @@ rest; pin to an exact version if updates should be deliberate.
   agent keeps answering, and the dashboard still reports the model in use. Don't
   rearrange `agents.defaults.models` or hand-register `models.providers.anthropic`
   trying to clear it.
+- `openclaw doctor` always reports two Browser warnings here — no Chromium executable,
+  and no `DISPLAY` with `browser.headless` false — and names `browserless` as an
+  "OpenClaw-managed" profile despite its `attachOnly`. They read identically whether the
+  browser tool is working or completely broken, so treat them as constant, not as a
+  monitor: their presence isn't a fault and their absence isn't health. Don't set
+  `browser.headless` or `browser.executablePath` to silence them; both describe a local
+  launch this stack never performs. The check that does discriminate is a
+  `ChromiumCDPWebSocketRoute` session in `docker logs claw-browser` after a prompt that
+  doesn't name the profile.
 - `openclaw memory status --deep` can report `Unknown memory embedding provider: ollama`
   even while `memory_search` works fine at runtime
   ([openclaw#66077](https://github.com/openclaw/openclaw/issues/66077)) — it's a
