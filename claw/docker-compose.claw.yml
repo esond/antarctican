@@ -1,6 +1,16 @@
 networks:
   claw-net:
     driver: bridge
+    # Subnet is declared (not left to Docker's default pool) so cloudflared can
+    # hold a fixed address -- the gateway's gateway.trustedProxies on the host
+    # names that exact IP, and an address that drifts on recreate would 403 the
+    # tunnel with proxy_attribution_required. ip_range confines dynamic
+    # allocation to the upper half so nothing can be handed .10 before
+    # cloudflared claims it.
+    ipam:
+      config:
+        - subnet: 172.25.0.0/24
+          ip_range: 172.25.0.128/25
 
 services:
   # OpenClaw gateway + dashboard. The image runs as its own fixed user
@@ -67,7 +77,10 @@ services:
       - TUNNEL_TOKEN=${CLOUDFLARED_TUNNEL_TOKEN}
     restart: unless-stopped
     networks:
-      - claw-net
+      # Pinned: must stay in sync with gateway.trustedProxies on the host
+      # (openclaw config get gateway.trustedProxies). See README.
+      claw-net:
+        ipv4_address: 172.25.0.10
     labels:
       net.unraid.docker.icon: "https://avatars.githubusercontent.com/u/314135?s=200&v=4"
 

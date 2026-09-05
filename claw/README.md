@@ -289,6 +289,25 @@ DNSimple):
    Exposure is still only what compose publishes — the LAN port and the tunnel.
 3. In Zero Trust → Access → Applications, add an application for that hostname with a
    policy allowing only your email (one-time PIN or an identity provider).
+4. Tell the gateway to trust `cloudflared` as a proxy. Since 2026.9.x the gateway
+   attributes proxy-shaped traffic *before* auth runs, and rejects requests it can't
+   attribute with `403 proxy_attribution_required` — the tunnel 403s while LAN access
+   on `${OPENCLAW_HOST_PORT}` keeps working, which is the tell:
+
+   ```sh
+   docker exec openclaw openclaw config set gateway.trustedProxies '["172.25.0.10"]'
+   docker restart openclaw
+   ```
+
+   That address is pinned in the compose file (`cloudflared.networks.claw-net.ipv4_address`,
+   with the subnet declared under `networks.claw-net.ipam` so Docker can't reassign it).
+   **The two must stay in sync** — change one without the other and the tunnel 403s again.
+
+   Leave `gateway.allowRealIpFallback` unset. It defaults to `false`, which is fail-closed;
+   enabling it makes the gateway accept `X-Real-IP` when `X-Forwarded-For` is absent, and is
+   only safe if the proxy strips a client-supplied `X-Real-IP`. Never widen `trustedProxies`
+   to the whole bridge subnet: `claw-browser` renders untrusted web content on that same
+   network.
 
 Result: the dashboard answers at a real public URL, but Cloudflare demands your identity
 before any request reaches the container, no host ports are open, and OpenClaw's own
