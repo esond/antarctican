@@ -62,8 +62,14 @@ OpenClaw runs as its upstream fixed user (`node`, UID 1000) — it doesn't honor
      -v /mnt/user/appdata/openclaw/config:/home/node/.openclaw \
      -v /mnt/user/appdata/openclaw/auth-secret:/home/node/.config/openclaw \
      -v /mnt/user/claw:/home/node/.openclaw/workspace \
-     ghcr.io/openclaw/openclaw:latest onboard
+     ghcr.io/openclaw/openclaw:latest openclaw onboard
    ```
+
+   The `openclaw` before the subcommand is required, not a typo. The image entrypoint is
+   `tini -s --` with a default command of `node openclaw.mjs gateway`, so a bare
+   subcommand replaces the whole command rather than appending to it and dies with
+   `[FATAL tini (7)] exec onboard failed: No such file or directory`. Every one-off
+   `docker run` against this image needs the same shape.
 
 6. Start the stack from the Compose Manager plugin. On first start `ollama` pulls its
    embedding model (~640MB) and only reports healthy once it's present.
@@ -196,7 +202,6 @@ insecure auth on, and `gateway.bind lan` makes the origin/rate-limit settings ma
 ```sh
 docker exec openclaw openclaw config set gateway.controlUi.allowInsecureAuth false
 docker exec openclaw openclaw config set plugins.allow '["anthropic","discord","ollama","browser","memory-core"]'
-docker exec openclaw openclaw config set plugins.bundledDiscovery allowlist
 docker exec openclaw openclaw config set gateway.controlUi.allowedOrigins '["https://claw.example.com"]'
 docker exec openclaw openclaw config set gateway.auth.rateLimit '{"maxAttempts":10,"windowMs":60000,"lockoutMs":300000}'
 docker restart openclaw
@@ -209,20 +214,29 @@ appear here. The list is also validated — an id the image doesn't ship is reje
 `plugin not found`, which makes it a cheap way to check a name.
 
 `memory-core` is on the list even though no step above enables it: it ships enabled and
-backs the memory search from step 8. On 2026.7.1 the allowlist gates **bundled** plugins
-too, so leaving it off drops memory search — the same silent degradation as an unenabled
-`ollama`, one layer up. `plugins.bundledDiscovery` is what selects that behavior, and it
-must be set explicitly: on a config that predates the key, `openclaw doctor` offers to
-write `"compat"`, which restores the legacy carve-out where bundled plugins load whether
-or not they're listed. Take `"allowlist"` instead — `compat` reintroduces exactly the
-implicit loading this section exists to prevent. Order matters when applying it to a
-running gateway: widen the list first, then set the mode, or the restart in between drops
-`memory-core`.
+backs the memory search from step 8. The allowlist gates **bundled** plugins too, so
+leaving it off drops memory search — the same silent degradation as an unenabled
+`ollama`, one layer up.
 
+`plugins.bundledDiscovery` no longer exists as of 2026.9.2 — `config get` returns
+`Unknown config path` and it is absent from `config schema`. On 2026.7.1 it selected
+whether the allowlist covered bundled plugins; that behaviour is now unconditional, so
+the strict posture this section wants is the default and there is nothing to opt into.
+Don't re-add the key: on some versions an unrecognized config key blocks gateway startup
+outright ([openclaw#78236](https://github.com/openclaw/openclaw/issues/78236)).
 
-The audit should come back with zero criticals. A warn about the unpinned
-`@openclaw/discord` npm spec is accepted — it matters at plugin-update time, not at
-rest; pin to an exact version if updates should be deliberate.
+One carve-out survives, per the `plugins.allow` schema description: a bundled chat
+channel can still activate its own plugin when that channel is explicitly enabled in
+config. It doesn't apply here — `discord` is on the list anyway — but it means the
+allowlist is not quite the last word for channel plugins.
+
+The audit should come back with zero criticals. It will also warn about the unpinned
+`@openclaw/discord` npm spec. Treat that as real: an unpinned spec resolved to a build
+whose SDK imports had been removed in 2.0, which took the plugin down during an upgrade
+and put the legacy-state migration at risk (`doctor --fix` discards *all* pending
+migrations if any plugin fails to load,
+[openclaw#76798](https://github.com/openclaw/openclaw/issues/76798)). Pin it to an exact
+version.
 
 ### Gotchas
 
@@ -253,6 +267,12 @@ rest; pin to an exact version if updates should be deliberate.
   launch this stack never performs. The check that does discriminate is a
   `ChromiumCDPWebSocketRoute` session in `docker logs claw-browser` after a prompt that
   doesn't name the profile.
+- `openclaw doctor`'s `--only`, `--skip`, `--all` and `--severity-min` are **lint-only**
+  flags: combining any of them with `--fix` exits non-zero with `doctor lint options
+  require --lint`. There is no supported way to scope a repair to some findings and not
+  others. When `--fix` has to run, run it interactively (`-it`, without `--yes`) and use
+  its per-finding prompts as the control surface — declining individually is the only
+  scoping available.
 - `openclaw memory status --deep` can report `Unknown memory embedding provider: ollama`
   even while `memory_search` works fine at runtime
   ([openclaw#66077](https://github.com/openclaw/openclaw/issues/66077)) — it's a
