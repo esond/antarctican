@@ -9,9 +9,8 @@ optionally, its own Fastmail mailbox over Fastmail's hosted MCP endpoint. Deploy
 
 | Service | Image | Purpose | UI port |
 |---|---|---|---|
-| `openclaw` | ghcr.io/openclaw/openclaw | Agent gateway + dashboard | `${OPENCLAW_HOST_PORT}` |
+| `openclaw` | ghcr.io/openclaw/openclaw (`-browser` variant) | Agent gateway + dashboard, with the agent's headless Chromium baked in | `${OPENCLAW_HOST_PORT}` |
 | `cloudflared` | cloudflare/cloudflared | Publishes the dashboard at a public hostname via Cloudflare Tunnel | — |
-| `claw-browser` | ghcr.io/browserless/chromium | Headless Chromium for the agent's browser tool (CDP) | — |
 | `ollama` | ollama/ollama | Local embedding model for OpenClaw's memory search (pulls it on start) | — |
 
 OpenClaw runs as its upstream fixed user (`node`, UID 1000) — it doesn't honor
@@ -62,7 +61,7 @@ OpenClaw runs as its upstream fixed user (`node`, UID 1000) — it doesn't honor
      -v /mnt/user/appdata/openclaw/config:/home/node/.openclaw \
      -v /mnt/user/appdata/openclaw/auth-secret:/home/node/.config/openclaw \
      -v /mnt/user/claw:/home/node/.openclaw/workspace \
-     ghcr.io/openclaw/openclaw:latest openclaw onboard
+     ghcr.io/openclaw/openclaw:latest-browser openclaw onboard
    ```
 
    The `openclaw` before the subcommand is required, not a typo. The image entrypoint is
@@ -139,43 +138,76 @@ OpenClaw runs as its upstream fixed user (`node`, UID 1000) — it doesn't honor
    `qwen3-embedding:0.6b` is the best quality-per-MB option that runs on CPU here;
    `embeddinggemma` is an equivalent alternative and `nomic-embed-text` a lighter one.
    Changing model later means re-embedding every note, so pick before the memory grows.
-9. Enable the browser tool, attached to the `claw-browser` sidecar over CDP.
-   Five gates, all required — the docs mention only the first (substitute the
-   `BROWSERLESS_TOKEN` value from `.env`):
+9. Enable the browser tool. The `-browser` image variant ships Playwright's Chromium
+   under `/home/node/.cache/ms-playwright`; OpenClaw auto-detects it there on Linux,
+   and the built-in managed `openclaw` profile launches it inside the gateway
+   container. Four gates, all required:
 
    ```sh
    docker exec openclaw openclaw config set browser.enabled true
-   docker exec openclaw openclaw config set browser.profiles.browserless '{"cdpUrl":"ws://claw-browser:3000?token=<BROWSERLESS_TOKEN>","attachOnly":true,"color":"#f97316"}'
+   docker exec openclaw openclaw config set browser.noSandbox true
    docker exec openclaw openclaw config set plugins.entries.browser.enabled true
    docker exec openclaw openclaw config set tools.alsoAllow '["browser"]'
-   docker exec openclaw openclaw config set browser.defaultProfile browserless
    docker restart openclaw
    ```
 
-   - `attachOnly: true` — without it OpenClaw treats the profile as a
-     locally-managed browser and tries to launch Chromium inside its own
-     container, which fails (no browser binary there; that's the sidecar's job).
-   - `color` (any CSS color) is required by the config schema even though the
-     docs don't list it — the profile write is rejected without it.
+   - `browser.noSandbox: true` — Chromium's own process sandbox creates user
+     namespaces, which Docker's default seccomp profile denies (and
+     `no-new-privileges` rules out the setuid helper). Without it the launch
+     fails with `Failed to move to new namespace`; OpenClaw's own launch hint
+     suggests the same fix. Sidecar images run Chromium with `--no-sandbox` as
+     well, so the flag itself is nothing new — what changes is which container
+     the renderer lives in; see Security notes.
+   - Headless needs no setting. With no `DISPLAY` in the container, OpenClaw's
+     Linux fallback launches with `--headless=new`, and `openclaw browser --json
+     status` reports `headlessSource: linux-display-fallback`. Don't set
+     `browser.headless` or `browser.executablePath`; detection covers both.
+   - No `shm_size` either: OpenClaw always passes `--disable-dev-shm-usage` on
+     Linux, so Docker's default 64 MB `/dev/shm` is not a problem.
+   - The compose file sets `XDG_CACHE_HOME=/home/node/.openclaw/cache`. Without
+     it the 2026.9.2 `-browser` image crash-loops before the gateway starts:
+
+     ```
+     Reason: SQLite read-only worker Unable to create fallback OpenClaw temp dir: /home/node/.cache/openclaw-1000
+     ```
+
+     Its Dockerfile creates `/home/node/.cache` as root while installing
+     Chromium and chowns only `ms-playwright` beneath it, so `node` can't
+     create OpenClaw's SQLite staging dir there. The plain image never hits
+     this because `.cache` doesn't exist and `node` creates it. This isn't an
+     Unraid permission problem — the path is inside the image, not a mount.
+     Upstream main already fixes the Dockerfile; the env var is harmless once
+     that ships. It also moves the plugin-loader cache and Chromium's XDG cache
+     under the state dir, which OpenClaw already treats as volatile.
    - The browser plugin ships disabled, same as Discord in step 7. If
      `plugins.allow` is set (Hardening below), `browser` must be on it too.
    - The onboarding tool profile (`tools.profile: "coding"`) excludes the UI
      tool group, so the plugin can be enabled and healthy while the agent still
      has no browser tool. `tools.alsoAllow` grants just the browser tools
      without widening the whole profile to `full`.
-   - Defining the profile does not make the tool *use* it. The browser service
-     registers the built-in managed profiles alongside yours (it logs
-     `Browser control service ready (profiles=4)` for a config that names one),
-     and an unset `browser.defaultProfile` resolves to the managed `openclaw`
-     profile. A tool call that doesn't name a profile then tries to launch
-     Chromium locally and fails with `No supported browser found` — the
-     sidecar is never contacted. Naming `browserless` in the prompt works and
-     hides the problem, so test without naming it.
+   - Leave `browser.defaultProfile` unset; it resolves to the managed `openclaw`
+     profile. That profile's state (cookies, logins) lives under
+     `config/browser/openclaw/user-data` on the config mount, so it survives
+     restarts and image updates. Delete that directory with the stack stopped
+     to reset it.
 
-   Verify from the sidecar, not from the agent's answer: `docker logs
-   claw-browser` should show a `ChromiumCDPWebSocketRoute` session opening from
-   the openclaw container. A managed-launch failure produces no browserless
-   activity at all.
+   Verify with a prompt that uses the browser *without* naming a profile, then
+   `docker exec openclaw openclaw browser --json status`: the `openclaw` profile
+   should be the running one. The agent's answer alone isn't proof.
+
+   **Migrating from the browserless sidecar** (the previous shape of this
+   stack): update the stack so the `-browser` image is pulled and `claw-browser`
+   is gone (`docker rm -f claw-browser` if the Compose plugin leaves the orphan
+   running), then drop the old profile before the writes above:
+
+   ```sh
+   docker exec openclaw openclaw config unset browser.profiles.browserless
+   docker exec openclaw openclaw config unset browser.defaultProfile
+   ```
+
+   `browser.enabled`, the plugin enable, `tools.alsoAllow`, and the `browser`
+   entry in `plugins.allow` carry over unchanged. `BROWSERLESS_TOKEN` in the
+   host `.env` is unused and can go.
 10. 1Password. The `onepassword` plugin that docs.openclaw.ai describes does not
     exist in 2026.7.1 — `plugins.allow` rejects the id as `plugin not found` — so
     the plugin/credentials-file steps there don't apply. What this image has is
@@ -258,15 +290,12 @@ version.
   agent keeps answering, and the dashboard still reports the model in use. Don't
   rearrange `agents.defaults.models` or hand-register `models.providers.anthropic`
   trying to clear it.
-- `openclaw doctor` always reports two Browser warnings here — no Chromium executable,
-  and no `DISPLAY` with `browser.headless` false — and names `browserless` as an
-  "OpenClaw-managed" profile despite its `attachOnly`. They read identically whether the
-  browser tool is working or completely broken, so treat them as constant, not as a
-  monitor: their presence isn't a fault and their absence isn't health. Don't set
-  `browser.headless` or `browser.executablePath` to silence them; both describe a local
-  launch this stack never performs. The check that does discriminate is a
-  `ChromiumCDPWebSocketRoute` session in `docker logs claw-browser` after a prompt that
-  doesn't name the profile.
+- `openclaw doctor`'s Browser section is quiet on the `-browser` image: it finds the
+  Playwright Chromium, and the missing-`DISPLAY` case is handled by the headless
+  fallback rather than warned about. A clean doctor still isn't proof the *agent* has
+  the tool — the `plugins.allow` and `tools.alsoAllow` gates in step 9 are invisible to
+  it — so the check that discriminates is a browser-using prompt followed by
+  `openclaw browser --json status`.
 - `openclaw doctor`'s `--only`, `--skip`, `--all` and `--severity-min` are **lint-only**
   flags: combining any of them with `--fix` exits non-zero with `doctor lint options
   require --lint`. There is no supported way to scope a repair to some findings and not
@@ -326,8 +355,7 @@ DNSimple):
    Leave `gateway.allowRealIpFallback` unset. It defaults to `false`, which is fail-closed;
    enabling it makes the gateway accept `X-Real-IP` when `X-Forwarded-For` is absent, and is
    only safe if the proxy strips a client-supplied `X-Real-IP`. Never widen `trustedProxies`
-   to the whole bridge subnet: `claw-browser` renders untrusted web content on that same
-   network.
+   beyond that one address: anything it names can forge client IPs.
 
 Result: the dashboard answers at a real public URL, but Cloudflare demands your identity
 before any request reaches the container, no host ports are open, and OpenClaw's own
@@ -549,10 +577,16 @@ token with **Send email**, registered as its own MCP server so the gate can targ
 - The 1Password service account is the enforcement edge of that rule: scope it read-only
   to the agent vault and nothing else. Whatever it can read, a prompt injection can read —
   there is no human-approval gate on this runtime.
-- `claw-browser` sits on the LAN, so the browser tool can reach internal HTTP UIs (Unraid,
-  the router) as rendered pages. That's within the trust already granted — the
-  agent has network access regardless — but it's the reason the sidecar publishes no port
-  and CDP is token-gated.
+- The browser tool runs Chromium inside the `openclaw` container, with `--no-sandbox`
+  because Docker's seccomp profile denies Chromium's namespace sandbox. A renderer
+  escape therefore lands in the gateway container — next to the config mount and the
+  API keys in its environment — where the earlier browserless sidecar confined it to a
+  container that held nothing but its own token. That trade bought a simpler stack and
+  persistent logins. Two things follow: keep `browser.ssrfPolicy` at its fail-closed
+  default (it blocks navigation to private and loopback addresses, the gateway's own
+  port included, unless `dangerouslyAllowPrivateNetwork` is set), and note that this
+  Chromium is the version pinned by the image's Playwright release, so it only updates
+  when the OpenClaw image does.
 - Skills from ClawHub are third-party code with a documented malware problem. Read a
   skill before installing it; prefer MCP servers for integrations.
 - Forwarded mail is untrusted input that lands directly in the agent's context — a message
@@ -574,7 +608,6 @@ token with **Send email**, registered as its own MCP server so the gate can targ
 - [OpenClaw docs — browser tool](https://docs.openclaw.ai/tools/browser)
 - [OpenClaw docs — 1Password plugin](https://docs.openclaw.ai/gateway/1password)
 - [OpenClaw docs — MCP CLI](https://docs.openclaw.ai/cli/mcp)
-- [Browserless docs](https://docs.browserless.io/)
 - [Fastmail — an MCP server for Fastmail](https://www.fastmail.com/blog/an-mcp-server-for-fastmail/)
 - [Fastmail — API tokens](https://www.fastmail.help/hc/en-us/articles/5254602856719-API-tokens)
 - [Fastmail — connecting AI tools via the MCP server](https://www.fastmail.help/hc/en-us/articles/15869557281295-Connecting-AI-tools-via-Fastmail-s-MCP-server)

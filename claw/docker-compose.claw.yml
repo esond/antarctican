@@ -13,11 +13,14 @@ networks:
           ip_range: 172.25.0.128/25
 
 services:
-  # OpenClaw gateway + dashboard. The image runs as its own fixed user
-  # (node, uid 1000) and does not honor PUID/PGID -- chown the appdata
-  # dirs and workspace share to 1000:1000 (see README).
+  # OpenClaw gateway + dashboard. The -browser variant bakes in Playwright's
+  # Chromium for the agent's browser tool (README step 9); the plain tag has
+  # no browser and the tool fails with "No supported browser found". The
+  # image runs as its own fixed user (node, uid 1000) and does not honor
+  # PUID/PGID -- chown the appdata dirs and workspace share to 1000:1000
+  # (see README).
   openclaw:
-    image: ghcr.io/openclaw/openclaw:latest
+    image: ghcr.io/openclaw/openclaw:latest-browser
     container_name: openclaw
     cap_drop:
       - NET_RAW
@@ -26,6 +29,12 @@ services:
       - no-new-privileges:true
     environment:
       - TZ=${TZ}
+      # The released -browser image builds /home/node/.cache as root (its
+      # Chromium install runs mkdir -p as root and chowns only ms-playwright),
+      # so node can't create the SQLite staging dir there and the gateway
+      # crash-loops at startup. Point the cache root at the state dir's own
+      # volatile cache instead. Fixed on upstream main; harmless once it ships.
+      - XDG_CACHE_HOME=/home/node/.openclaw/cache
       - ANTHROPIC_API_KEY=${ANTHROPIC_API_KEY}
       - DISCORD_BOT_TOKEN=${DISCORD_BOT_TOKEN}
       # Authenticates the bind-mounted op CLI (README step 10). The service
@@ -83,22 +92,6 @@ services:
         ipv4_address: 172.25.0.10
     labels:
       net.unraid.docker.icon: "https://avatars.githubusercontent.com/u/314135?s=200&v=4"
-
-  # Headless Chromium for the agent's browser tool, attached over CDP
-  # (browser.profiles config on the openclaw side -- see README). No
-  # published port: reachable only on claw-net, and the token gates CDP
-  # access on top of that.
-  claw-browser:
-    image: ghcr.io/browserless/chromium:latest
-    container_name: claw-browser
-    environment:
-      - TZ=${TZ}
-      - TOKEN=${BROWSERLESS_TOKEN}
-    restart: unless-stopped
-    networks:
-      - claw-net
-    labels:
-      net.unraid.docker.icon: "https://avatars.githubusercontent.com/u/30044?s=200&v=4"
 
   # Local embedding model for OpenClaw's builtin memory search, reached at
   # http://ollama:11434 on claw-net. CPU-only is fine for a model this small.
