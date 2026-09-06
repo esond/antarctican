@@ -164,6 +164,21 @@ OpenClaw runs as its upstream fixed user (`node`, UID 1000) — it doesn't honor
      `browser.headless` or `browser.executablePath`; detection covers both.
    - No `shm_size` either: OpenClaw always passes `--disable-dev-shm-usage` on
      Linux, so Docker's default 64 MB `/dev/shm` is not a problem.
+   - The compose file sets `XDG_CACHE_HOME=/home/node/.openclaw/cache`. Without
+     it the 2026.9.2 `-browser` image crash-loops before the gateway starts:
+
+     ```
+     Reason: SQLite read-only worker Unable to create fallback OpenClaw temp dir: /home/node/.cache/openclaw-1000
+     ```
+
+     Its Dockerfile creates `/home/node/.cache` as root while installing
+     Chromium and chowns only `ms-playwright` beneath it, so `node` can't
+     create OpenClaw's SQLite staging dir there. The plain image never hits
+     this because `.cache` doesn't exist and `node` creates it. This isn't an
+     Unraid permission problem — the path is inside the image, not a mount.
+     Upstream main already fixes the Dockerfile; the env var is harmless once
+     that ships. It also moves the plugin-loader cache and Chromium's XDG cache
+     under the state dir, which OpenClaw already treats as volatile.
    - The browser plugin ships disabled, same as Discord in step 7. If
      `plugins.allow` is set (Hardening below), `browser` must be on it too.
    - The onboarding tool profile (`tools.profile: "coding"`) excludes the UI

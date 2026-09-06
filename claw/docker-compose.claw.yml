@@ -29,6 +29,12 @@ services:
       - no-new-privileges:true
     environment:
       - TZ=${TZ}
+      # The released -browser image builds /home/node/.cache as root (its
+      # Chromium install runs mkdir -p as root and chowns only ms-playwright),
+      # so node can't create the SQLite staging dir there and the gateway
+      # crash-loops at startup. Point the cache root at the state dir's own
+      # volatile cache instead. Fixed on upstream main; harmless once it ships.
+      - XDG_CACHE_HOME=/home/node/.openclaw/cache
       - ANTHROPIC_API_KEY=${ANTHROPIC_API_KEY}
       - DISCORD_BOT_TOKEN=${DISCORD_BOT_TOKEN}
       # Authenticates the bind-mounted op CLI (README step 10). The service
