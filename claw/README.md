@@ -133,7 +133,9 @@ one dies with a `FailoverError` whose wording blames the account or the model. E
 
 `memory-core` ships enabled and backs memory search; leave it. The gateway logs which
 plugins actually loaded on startup (`http server listening (N plugins: ...)`) — that line
-is the confirmation, not the toggle.
+is the confirmation, not the toggle. A separate allowlist, `plugins.allow`, is set later
+under [Gateway and public access](#gateway-and-public-access); once it exists it gates
+every plugin here, enabled or not.
 
 ### Models and auth
 
