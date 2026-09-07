@@ -36,6 +36,10 @@ services:
       # volatile cache instead. Fixed on upstream main; harmless once it ships.
       - XDG_CACHE_HOME=/home/node/.openclaw/cache
       - ANTHROPIC_API_KEY=${ANTHROPIC_API_KEY}
+      # OpenAI, for the primary model (README step 7). Both provider keys
+      # are present so failover across providers actually has somewhere to
+      # fall back to.
+      - OPENAI_API_KEY=${OPENAI_API_KEY}
       - DISCORD_BOT_TOKEN=${DISCORD_BOT_TOKEN}
       # Authenticates the bind-mounted op CLI (README step 10). The service
       # account must be scoped read-only to the agent vault -- anything it

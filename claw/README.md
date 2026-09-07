@@ -1,9 +1,9 @@
 # claw stack
 
-Personal AI assistant: OpenClaw as the agent gateway (Discord channel, Anthropic API for
-models), using its builtin memory with a local embedding model for semantic recall and,
-optionally, its own Fastmail mailbox over Fastmail's hosted MCP endpoint. Deployed from
-`docker-compose.claw.yml` via the Docker Compose Manager plugin.
+Personal AI assistant: OpenClaw as the agent gateway (Discord channel, OpenAI and
+Anthropic APIs for models), using its builtin memory with a local embedding model for
+semantic recall and, optionally, its own Fastmail mailbox over Fastmail's hosted MCP
+endpoint. Deployed from `docker-compose.claw.yml` via the Docker Compose Manager plugin.
 
 ## Services
 
@@ -73,25 +73,79 @@ OpenClaw runs as its upstream fixed user (`node`, UID 1000) — it doesn't honor
 6. Start the stack from the Compose Manager plugin. On first start `ollama` pulls its
    embedding model (~640MB) and only reports healthy once it's present.
 7. Enable the plugins this stack needs. The image ships ~70 stock plugins with
-   nearly all of them disabled — `openclaw plugins list` shows the ratio. Two matter
-   here. The **anthropic** provider plugin supplies the live model catalog; without it
-   the gateway knows only the models baked into core, so anything newer than those
-   won't resolve — name one in `agents.defaults.models` and the request dies with a
-   `FailoverError` whose wording blames the account or the model instead.
+   nearly all of them disabled — `openclaw plugins list` shows the ratio. Three matter
+   here. The **anthropic** and **openai** provider plugins supply the live model
+   catalogs; without one the gateway knows only the models baked into core, so anything
+   newer than those won't resolve — name one and the request dies with a `FailoverError`
+   whose wording blames the account or the model instead.
    **discord** is installed by onboarding but without explicit trust, so the bot won't
    start until it's enabled:
 
    ```sh
    docker exec openclaw openclaw config set plugins.entries.anthropic.enabled true
+   docker exec openclaw openclaw config set plugins.entries.openai.enabled true
    docker exec openclaw openclaw config set plugins.entries.discord.enabled true
    docker restart openclaw
    ```
 
    The gateway logs which plugins actually loaded on startup (`http server listening
    (N plugins: ...)`) — that line, not the config write, is the confirmation. Don't
-   hand-register models under `models.providers.anthropic.models[]` to route around a
+   hand-register models under `models.providers.<provider>.models[]` to route around a
    thin catalog; with the plugin enabled the catalog comes from upstream and stays
-   current on its own.
+   current on its own. `agents.defaults.models` is a different key doing a different
+   job — see below — and naming a model there *is* supported.
+
+   Both provider keys are in the compose environment, so both catalogs light up and
+   cross-provider failover has somewhere to go. `openai` ships **disabled** on 2026.9.2
+   (`@openclaw/openai-provider`, plugin id `openai`) even though docs.openclaw.ai calls
+   it enabled by default. If `plugins.allow` is set (Hardening below), `openai` must be
+   on it too — otherwise the enable above is silently undone.
+
+   Then set the model order. This stack runs **`openai/gpt-5.6-terra` primary with
+   `anthropic/claude-sonnet-5` as first fallback**. Do it only once the key is actually
+   in the container — the env var arrives when the stack is *recreated*, not on a
+   restart, and a primary model with no key behind it dies as a `FailoverError` that
+   blames the model:
+
+   ```sh
+   docker exec openclaw sh -c 'test -n "$OPENAI_API_KEY" && echo key-present'
+   ```
+
+   `agents.defaults.models` is an **allowlist**, not just a settings map. Enabling the
+   provider is not enough: a model absent from that map doesn't appear in the dashboard
+   picker and is rejected at runtime, even with a healthy catalog and valid auth behind
+   it. Onboarding seeds it with a handful of models, so the ones you actually want have
+   to be named. Patch rather than `config set` the whole key, so the existing entries
+   merge instead of being replaced:
+
+   ```sh
+   echo '{ agents: { defaults: { models: { "openai/gpt-5.6-terra": {} } } } }' \
+     | docker exec -i openclaw openclaw config patch --stdin
+   docker exec openclaw openclaw config get agents.defaults.models
+   docker exec openclaw openclaw config set agents.defaults.model.primary "openai/gpt-5.6-terra"
+   ```
+
+   Read that `config get` back and count the keys — it's the only confirmation the merge
+   didn't clobber the others. An empty object means no per-model overrides; entries also
+   carry `alias` (a short name for model-switch commands) and `params` such as
+   `cacheRetention`.
+
+   Set the fallback in the dashboard rather than by hand. The **Defaults** card carries
+   primary model, utility model, first fallback and thinking level, populated from the
+   configured catalog, and it writes whatever key this version uses for the chain — only
+   `model.primary` is confirmed here (`openclaw config get agents.defaults.model` shows
+   the live shape, and `openclaw config schema` settles any disagreement with
+   docs.openclaw.ai, which has been wrong about model key paths before — see the
+   `memorySearch` note in step 8). The fallback selector replaces only the *first* entry
+   in the chain and preserves any later ones; `openclaw models fallbacks` manages the
+   full ordered list. `utility` is a separate slot that does not follow `primary` —
+   unset by default, worth a glance if you've ever set it.
+
+   Model refs are provider-prefixed (`openai/*`, `anthropic/*`) — a bare
+   `gpt-5.6-terra` doesn't resolve. Terra is a mid/mini tier and Sonnet 5 behind it is
+   not a tier-ordered chain; that's deliberate, and failover is about quota rather than
+   capability anyway — rate-limit responses roll to the next model in the chain, while
+   other failures fail immediately without retry.
 
    In the Discord developer portal, the bot needs the **Message Content** and
    **Server Members** privileged intents. Its presence shows offline by design — DM
@@ -233,7 +287,7 @@ insecure auth on, and `gateway.bind lan` makes the origin/rate-limit settings ma
 
 ```sh
 docker exec openclaw openclaw config set gateway.controlUi.allowInsecureAuth false
-docker exec openclaw openclaw config set plugins.allow '["anthropic","discord","ollama","browser","memory-core"]'
+docker exec openclaw openclaw config set plugins.allow '["anthropic","openai","discord","ollama","browser","memory-core"]'
 docker exec openclaw openclaw config set gateway.controlUi.allowedOrigins '["https://claw.example.com"]'
 docker exec openclaw openclaw config set gateway.auth.rateLimit '{"maxAttempts":10,"windowMs":60000,"lockoutMs":300000}'
 docker restart openclaw
@@ -506,9 +560,9 @@ captures.
 At rest is the honest part: the token is stored in OpenClaw's config under
 `${APPDATA}/openclaw/config`, which is the *parent* of the agent's workspace mount. An
 agent with a shell tool or file reads that reach outside the workspace can read it — along
-with the gateway token, and `ANTHROPIC_API_KEY` and `DISCORD_BOT_TOKEN` from the container
-environment. The Fastmail token is not uniquely exposed; it joins a set that is already
-there.
+with the gateway token, and `OPENAI_API_KEY`, `ANTHROPIC_API_KEY` and `DISCORD_BOT_TOKEN`
+from the container environment. The Fastmail token is not uniquely exposed; it joins a set
+that is already there.
 
 So treat it as exfiltratable, per the rule in [Security notes](#security-notes), and let
 the blast radius be the answer rather than the storage. A stolen Fastmail token is read and
