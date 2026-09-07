@@ -174,7 +174,7 @@ writes it. `utility` is a separate slot that does not follow `primary`.
 
 ### Memory search
 
-Config tab, `agents.defaults.memorySearch`:
+Config tab, `memory.search`:
 
 ```json5
 { enabled: true, provider: "ollama", model: "qwen3-embedding:0.6b",
@@ -183,9 +183,9 @@ Config tab, `agents.defaults.memorySearch`:
 
 The builtin engine defaults to OpenAI embeddings and, with no embedding provider, silently
 falls back to keyword-only (BM25) search. Use the native Ollama URL, not the `/v1` one;
-`apiKey` is a placeholder Ollama ignores. The path is `agents.defaults.memorySearch`,
-**not** the `memory.search` that docs.openclaw.ai documents — the form only offers the
-real one, which is one reason to edit here rather than by CLI.
+`apiKey` is a placeholder Ollama ignores. The path is the top-level `memory.search`
+documented at docs.openclaw.ai; the form offers it, which is one reason to edit here
+rather than by CLI.
 
 Config alone can look right while recall returns nothing. Two checks:
 
