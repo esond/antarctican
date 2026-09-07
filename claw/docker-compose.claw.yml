@@ -1,12 +1,16 @@
+# Compose owns the network, the bind mounts, the host port and the
+# environment. OpenClaw's own settings (models, plugins, channels, memory,
+# browser, gateway hardening) live in openclaw.json on the config mount and
+# are managed in the dashboard -- see README "Configuring in the dashboard".
+
 networks:
   claw-net:
     driver: bridge
     # Subnet is declared (not left to Docker's default pool) so cloudflared can
-    # hold a fixed address -- the gateway's gateway.trustedProxies on the host
-    # names that exact IP, and an address that drifts on recreate would 403 the
-    # tunnel with proxy_attribution_required. ip_range confines dynamic
-    # allocation to the upper half so nothing can be handed .10 before
-    # cloudflared claims it.
+    # hold a fixed address -- the gateway's gateway.trustedProxies names that
+    # exact IP, and an address that drifts on recreate would 403 the tunnel
+    # with proxy_attribution_required. ip_range confines dynamic allocation to
+    # the upper half so nothing can be handed .10 before cloudflared claims it.
     ipam:
       config:
         - subnet: 172.25.0.0/24
@@ -14,11 +18,10 @@ networks:
 
 services:
   # OpenClaw gateway + dashboard. The -browser variant bakes in Playwright's
-  # Chromium for the agent's browser tool (README step 9); the plain tag has
-  # no browser and the tool fails with "No supported browser found". The
-  # image runs as its own fixed user (node, uid 1000) and does not honor
-  # PUID/PGID -- chown the appdata dirs and workspace share to 1000:1000
-  # (see README).
+  # Chromium for the agent's browser tool; the plain tag has no browser and
+  # the tool fails with "No supported browser found". The image runs as its
+  # own fixed user (node, uid 1000) and does not honor PUID/PGID -- chown the
+  # appdata dirs and workspace share to 1000:1000 (see README).
   openclaw:
     image: ghcr.io/openclaw/openclaw:latest-browser
     container_name: openclaw
@@ -35,15 +38,16 @@ services:
       # crash-loops at startup. Point the cache root at the state dir's own
       # volatile cache instead. Fixed on upstream main; harmless once it ships.
       - XDG_CACHE_HOME=/home/node/.openclaw/cache
-      - ANTHROPIC_API_KEY=${ANTHROPIC_API_KEY}
-      # OpenAI, for the primary model (README step 7). Both provider keys
-      # are present so failover across providers actually has somewhere to
-      # fall back to.
-      - OPENAI_API_KEY=${OPENAI_API_KEY}
+      # Dashboard/gateway auth token; onboarding references it from the
+      # environment (README step 5). Model-provider credentials are not
+      # environment variables -- they are entered on the dashboard's Models
+      # page and kept in OpenClaw's auth store (README "Models and auth").
+      - OPENCLAW_GATEWAY_TOKEN=${OPENCLAW_GATEWAY_TOKEN}
+      # Read by the Discord channel when no token is set in config.
       - DISCORD_BOT_TOKEN=${DISCORD_BOT_TOKEN}
-      # Authenticates the bind-mounted op CLI (README step 10). The service
-      # account must be scoped read-only to the agent vault -- anything it
-      # can read, a prompt injection can read.
+      # Authenticates the bind-mounted op CLI (README "1Password"). The
+      # service account must be scoped read-only to the agent vault --
+      # anything it can read, a prompt injection can read.
       - OP_SERVICE_ACCOUNT_TOKEN=${OP_SERVICE_ACCOUNT_TOKEN}
     volumes:
       - ${APPDATA}/openclaw/config:/home/node/.openclaw
@@ -52,10 +56,10 @@ services:
       # here. Anything the agent can read, a prompt injection can read.
       - ${CLAW_WORKSPACE}:/home/node/.openclaw/workspace
       # 1Password CLI, driven by the bundled 1password skill and
-      # authenticated by OP_SERVICE_ACCOUNT_TOKEN below (README step 10) --
-      # a static binary fetched onto the host. Download it BEFORE starting
-      # the stack: if the file is missing, Docker creates a directory at
-      # this path and the mount breaks.
+      # authenticated by OP_SERVICE_ACCOUNT_TOKEN above -- a static binary
+      # fetched onto the host. Download it BEFORE starting the stack: if the
+      # file is missing, Docker creates a directory at this path and the
+      # mount breaks.
       - ${APPDATA}/openclaw/bin/op:/usr/local/bin/op:ro
     ports:
       # LAN access to the dashboard. Public access goes through cloudflared
@@ -90,8 +94,8 @@ services:
       - TUNNEL_TOKEN=${CLOUDFLARED_TUNNEL_TOKEN}
     restart: unless-stopped
     networks:
-      # Pinned: must stay in sync with gateway.trustedProxies on the host
-      # (openclaw config get gateway.trustedProxies). See README.
+      # Pinned: must stay in sync with gateway.trustedProxies in the
+      # dashboard Config tab. See README.
       claw-net:
         ipv4_address: 172.25.0.10
     labels:
