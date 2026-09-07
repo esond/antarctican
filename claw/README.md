@@ -21,8 +21,8 @@ OpenClaw runs as its upstream fixed user (`node`, UID 1000) — it doesn't honor
 
 - **Compose** owns the network (`claw-net`, cloudflared's pinned address), the bind
   mounts, the host port, and the environment. Infrastructure secrets (gateway token,
-  Discord, 1Password, tunnel) live in `.env`; model-provider credentials do not — they
-  go in through the dashboard and sit in OpenClaw's auth store.
+  1Password, tunnel) live in `.env`; model-provider credentials and the Discord bot token
+  do not — they go in through the dashboard.
 - **The OpenClaw dashboard** owns everything else — models, plugins, channels, memory,
   browser, gateway hardening, MCP servers. Its Config tab renders a form from the live
   config schema (with a raw JSON editor as the escape hatch), validates every write, and
@@ -39,10 +39,9 @@ OpenClaw runs as its upstream fixed user (`node`, UID 1000) — it doesn't honor
    `CLAW_WORKSPACE`). Don't SMB-export it; if you must, export read-only. Anything
    writable on this share becomes agent-readable input.
 2. Copy `.env.example` to `.env` and fill it in. `OPENCLAW_GATEWAY_TOKEN` is the dashboard
-   login token (`openssl rand -hex 32`); the Discord token comes from a bot application
-   created at the [Discord developer portal](https://discord.com/developers/applications).
-   Model-provider credentials (the ChatGPT subscription login and the Anthropic API key)
-   are added on the dashboard's Models page, not in `.env`.
+   login token (`openssl rand -hex 32`). Model-provider credentials (the ChatGPT
+   subscription login and the Anthropic API key) and the Discord bot token are entered in
+   the dashboard, not in `.env`.
 3. Pre-create and chown the bind-mount dirs (the images run as non-root and can't create
    them):
 
@@ -228,12 +227,12 @@ one with `headlessSource: linux-display-fallback`. The agent's answer alone isn'
 
 ### Discord
 
-Config tab: `channels.discord.enabled: true`. Leave `token` unset — the channel falls
-back to `DISCORD_BOT_TOKEN` from the environment for the default account (a config
-token would win over it). `dmPolicy` defaults to `pairing` and `groupPolicy` to
-`allowlist`; keep both.
+Config tab: `channels.discord.enabled: true` and `channels.discord.token` set to the
+bot token from a bot application created at the
+[Discord developer portal](https://discord.com/developers/applications). `dmPolicy`
+defaults to `pairing` and `groupPolicy` to `allowlist`; keep both.
 
-In the Discord developer portal the bot needs the **Message Content** and **Server
+In the developer portal the bot needs the **Message Content** and **Server
 Members** privileged intents. Its presence shows offline by design — DM it anyway; the
 first DM returns a pairing code, approved at **Settings → Channels → DM access
 requests**. Pairings are stored in the state database, not the config.
@@ -550,9 +549,9 @@ captures.
 At rest is the honest part: the token is stored in OpenClaw's config under
 `${APPDATA}/openclaw/config`, which is the *parent* of the agent's workspace mount. An
 agent with a shell tool or file reads that reach outside the workspace can read it — along
-with the gateway token, the ChatGPT OAuth profile and Anthropic key in the auth store,
-and `DISCORD_BOT_TOKEN` from the container environment. The Fastmail
-token is not uniquely exposed; it joins a set that is already there.
+with the Discord bot token in the same file, the gateway token, and the ChatGPT OAuth
+profile and Anthropic key in the auth store. The Fastmail token is not uniquely exposed;
+it joins a set that is already there.
 
 So treat it as exfiltratable, per the rule in [Security notes](#security-notes), and let
 the blast radius be the answer rather than the storage. A stolen Fastmail token is read and

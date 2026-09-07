@@ -43,8 +43,6 @@ services:
       # environment variables -- they are entered on the dashboard's Models
       # page and kept in OpenClaw's auth store (README "Models and auth").
       - OPENCLAW_GATEWAY_TOKEN=${OPENCLAW_GATEWAY_TOKEN}
-      # Read by the Discord channel when no token is set in config.
-      - DISCORD_BOT_TOKEN=${DISCORD_BOT_TOKEN}
       # Authenticates the bind-mounted op CLI (README "1Password"). The
       # service account must be scoped read-only to the agent vault --
       # anything it can read, a prompt injection can read.
