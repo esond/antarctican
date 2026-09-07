@@ -1,9 +1,7 @@
-# This file owns only what OpenClaw can't manage for itself: the network,
-# the bind mounts, host ports, and the environment. Every OpenClaw setting
-# (models, plugins, channels, memory, browser, gateway hardening) is managed
-# in the dashboard and lives in openclaw.json on the config mount -- see
-# README "Configuring in the dashboard". Don't add `openclaw config set`
-# steps to the README or bake settings into this file.
+# Compose owns the network, the bind mounts, the host port and the
+# environment. OpenClaw's own settings (models, plugins, channels, memory,
+# browser, gateway hardening) live in openclaw.json on the config mount and
+# are managed in the dashboard -- see README "Configuring in the dashboard".
 
 networks:
   claw-net:
@@ -40,15 +38,11 @@ services:
       # crash-loops at startup. Point the cache root at the state dir's own
       # volatile cache instead. Fixed on upstream main; harmless once it ships.
       - XDG_CACHE_HOME=/home/node/.openclaw/cache
-      # Gateway auth token. Supplied here rather than generated into
-      # openclaw.json so it survives a config reset and stays a .env concern
-      # like every other secret in this stack.
+      # Dashboard/gateway auth token; onboarding references it from the
+      # environment (README step 5). Model-provider credentials are not
+      # environment variables -- they are entered on the dashboard's Models
+      # page and kept in OpenClaw's auth store (README "Models and auth").
       - OPENCLAW_GATEWAY_TOKEN=${OPENCLAW_GATEWAY_TOKEN}
-      # No model-provider keys here on purpose. OpenAI is a ChatGPT
-      # subscription login and Anthropic an API key, both entered on the
-      # dashboard's Models page and kept in OpenClaw's own auth store, which
-      # survives a config reset (README "Models and auth"). A provider key in
-      # the environment would compete with the stored profile.
       # Read by the Discord channel when no token is set in config.
       - DISCORD_BOT_TOKEN=${DISCORD_BOT_TOKEN}
       # Authenticates the bind-mounted op CLI (README "1Password"). The

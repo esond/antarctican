@@ -41,8 +41,8 @@ OpenClaw runs as its upstream fixed user (`node`, UID 1000) — it doesn't honor
 2. Copy `.env.example` to `.env` and fill it in. `OPENCLAW_GATEWAY_TOKEN` is the dashboard
    login token (`openssl rand -hex 32`); the Discord token comes from a bot application
    created at the [Discord developer portal](https://discord.com/developers/applications).
-   There are no model-provider keys in `.env` — the ChatGPT subscription login and the
-   Anthropic API key are both added on the dashboard's Models page.
+   Model-provider credentials (the ChatGPT subscription login and the Anthropic API key)
+   are added on the dashboard's Models page, not in `.env`.
 3. Pre-create and chown the bind-mount dirs (the images run as non-root and can't create
    them):
 
@@ -148,9 +148,9 @@ agent's `openclaw-agent.sqlite` on the config mount) and refreshes it itself. Ad
 Anthropic the same way with **API key** — a dedicated key with a monthly spend cap set at
 [console.anthropic.com](https://console.anthropic.com). It lands in the same auth store.
 
-There are deliberately no provider keys in the environment. A key there would compete
-with the stored profile — for OpenAI that means API-key billing alongside the
-subscription — and keys in the auth store are one place to see, replace and remove them.
+Provider credentials live in the auth store rather than the environment: it is one
+place to see, replace and remove them, and nothing competes with the stored profile (an
+`OPENAI_API_KEY` in the environment would bill API usage alongside the subscription).
 
 Then the **Defaults** card — primary model, first fallback, utility model, thinking
 level, populated from the configured catalog. Pick the primary from what the OpenAI
@@ -259,7 +259,7 @@ as `plugin not found`. Set it last, after every plugin is enabled and working.
 
 Then `docker exec openclaw openclaw security audit` should come back with zero criticals.
 It will warn about the unpinned `@openclaw/discord` npm spec; treat that as real (an
-unpinned spec once resolved to a broken build mid-upgrade,
+unpinned spec can resolve to a broken build mid-upgrade,
 [openclaw#76798](https://github.com/openclaw/openclaw/issues/76798)) and pin it.
 
 ### MCP servers
@@ -287,9 +287,9 @@ persona files or skills.
 Two things to know:
 
 - **The app-server binary can be missing.** The plugin resolves `@openai/codex` from
-  its own package root; the Docker build prunes plugin dependency trees, and on this
-  host a chat under the harness once died with `Managed Codex app-server binary was not
-  found for @openai/codex`. Check before the first chat:
+  its own package root, and the Docker build prunes plugin dependency trees. The symptom
+  is a chat that dies with `Managed Codex app-server binary was not found for
+  @openai/codex`. Check before the first chat:
 
   ```sh
   docker exec openclaw openclaw doctor --lint --only codex/managed-app-server --json
@@ -319,7 +319,7 @@ unavailable; leaving it `auto` is the documented route and is what the dashboard
 - Environment variables arrive when the container is *recreated*, not on a restart. After
   editing `.env`, update the stack from the Compose Manager rather than restarting.
 - `openclaw models list` dies with `Cannot read properties of undefined (reading
-  'input')` once the `anthropic` provider plugin is enabled (seen on 2026.7.1). The
+  'input')` once the `anthropic` provider plugin is enabled (2026.7.1). The
   gateway resolves models by another path and is unaffected. Don't rearrange
   `agents.defaults.models` or hand-register `models.providers.anthropic` trying to clear
   it, and don't hand-register models under `models.providers.<provider>.models[]` at
@@ -342,9 +342,9 @@ unavailable; leaving it `auto` is the documented route and is what the dashboard
   ([openclaw#78236](https://github.com/openclaw/openclaw/issues/78236)). This is the
   general case for the Config tab's schema validation — a key the form doesn't offer is
   a key the running version doesn't know.
-- docs.openclaw.ai has been wrong about this version several times (the memory-search
-  key path, the `openai` plugin default, the `onepassword` plugin). When the docs and
-  the Config tab disagree, the tab reflects the live schema and wins.
+- docs.openclaw.ai disagrees with this version in places (the memory-search key path,
+  the `openai` plugin default, the `onepassword` plugin). When the docs and the Config
+  tab disagree, the tab reflects the live schema and wins.
 
 ## Public dashboard access
 
