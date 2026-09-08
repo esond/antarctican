@@ -77,6 +77,7 @@ OpenClaw runs as its upstream fixed user (`node`, UID 1000) — it doesn't honor
    ```sh
    docker run -it --rm \
      --env-file /boot/config/plugins/compose.manager/projects/claw/.env \
+     -e XDG_CACHE_HOME=/home/node/.openclaw/cache \
      -v /mnt/user/appdata/openclaw/config:/home/node/.openclaw \
      -v /mnt/user/appdata/openclaw/auth-secret:/home/node/.config/openclaw \
      -v /mnt/user/claw:/home/node/.openclaw/workspace \
@@ -94,8 +95,10 @@ OpenClaw runs as its upstream fixed user (`node`, UID 1000) — it doesn't honor
    The `openclaw` before the subcommand is required, not a typo. The image entrypoint is
    `tini -s --` with a default command of `node openclaw.mjs gateway`, so a bare
    subcommand replaces the whole command rather than appending to it and dies with
-   `[FATAL tini (7)] exec onboard failed: No such file or directory`. Every one-off
-   `docker run` against this image needs the same shape.
+   `[FATAL tini (7)] exec onboard failed: No such file or directory`. The `XDG_CACHE_HOME`
+   line is the same workaround the compose file carries for the image's root-owned
+   `~/.cache`; without it the CLI fails with `Unable to create fallback OpenClaw temp
+   dir`. Every one-off `docker run` against this image needs the same shape.
 
 6. Start the stack from the Compose Manager plugin. On first start `ollama` pulls its
    embedding model (~640MB) and only reports healthy once it's present.
