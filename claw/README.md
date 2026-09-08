@@ -308,21 +308,29 @@ persona files or skills.
 
 Two things to know:
 
-- **The app-server binary can be missing.** The plugin resolves `@openai/codex` from
-  its own package root, and the Docker build prunes plugin dependency trees. The symptom
-  is a chat that dies with `Managed Codex app-server binary was not found for
+- **The app-server binary is missing in the image.** The plugin resolves `@openai/codex`
+  from its own package root, and the Docker build prunes plugin dependency trees, so
+  the bundled copy shows `error` in `openclaw plugins list` (missing `@openai/codex`,
+  `smol-toml`) and a chat dies with `Managed Codex app-server binary was not found for
   @openai/codex`. Check before the first chat:
 
   ```sh
   docker exec openclaw openclaw doctor --lint --only codex/managed-app-server --json
   ```
 
-  If it reports the binary missing, install the plugin from **Settings → Plugins →
-  Discover** (or `docker exec openclaw openclaw plugins install @openclaw/codex`). A
-  downloadable install stores its package state under the config mount, so it survives
-  container replacement. The env-var escape hatch, `OPENCLAW_CODEX_APP_SERVER_BIN`
-  pointing at a bind-mounted `codex` binary, is the same pattern as `op` and is the
-  fallback if the install route doesn't take.
+  Fix by installing the plugin from npm, with the `npm:` prefix — the bare spec
+  `@openclaw/codex` is a no-op because the CLI prefers the bundled copy:
+
+  ```sh
+  docker exec openclaw openclaw plugins install npm:@openclaw/codex
+  docker restart openclaw
+  ```
+
+  The install lands under `${APPDATA}/openclaw/config/npm/projects/`, on the config
+  mount, so it survives container replacement; the doctor line flips to `ok: true` and
+  the plugin row to `enabled`. The env-var escape hatch, `OPENCLAW_CODEX_APP_SERVER_BIN`
+  pointing at a bind-mounted `codex` binary, would not help on its own here because the
+  JavaScript dependencies are missing too.
 - **The default mode is `yolo`**: `approvalPolicy: never`, `sandbox: danger-full-access`.
   The alternative, `appServer.mode: "guardian"`, sandboxes with `bwrap`, which needs
   nested user namespaces this container denies (same reason Chromium runs `noSandbox`).
