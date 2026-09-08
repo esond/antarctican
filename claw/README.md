@@ -155,9 +155,11 @@ one dies with a `FailoverError` whose wording blames the account or the model. E
 
 `memory-core` ships enabled and backs memory search; leave it. The gateway logs which
 plugins actually loaded on startup (`http server listening (N plugins: ...)`) — that line
-is the confirmation, not the toggle. A separate allowlist, `plugins.allow`, is set later
-under [Gateway and public access](#gateway-and-public-access); once it exists it gates
-every plugin here, enabled or not.
+is the confirmation, not the toggle. A fresh install enables around forty stock plugins,
+most of them model providers you will never configure; disable the ones you don't want
+on this page rather than writing a `plugins.allow` allowlist. The allowlist is
+exhaustive, and it silently blocks core plugins the image adds later (`device-pair`,
+which approves dashboard browsers, is one such plugin today).
 
 ### Models and auth
 
@@ -253,7 +255,10 @@ one with `headlessSource: linux-display-fallback`. The agent's answer alone isn'
 Config tab: `channels.discord.enabled: true` and `channels.discord.token` set to the
 bot token from a bot application created at the
 [Discord developer portal](https://discord.com/developers/applications). `dmPolicy`
-defaults to `pairing` and `groupPolicy` to `allowlist`; keep both.
+defaults to `pairing` and `groupPolicy` to `allowlist`; keep both. If you allowlist a
+guild under `channels.discord.guilds.<id>`, also set its `users` to your Discord user
+id; without it every member of a listed channel can trigger the agent, and the security
+audit says so.
 
 In the developer portal the bot needs the **Message Content** and **Server
 Members** privileged intents. Its presence shows offline by design — DM it anyway; the
@@ -262,27 +267,24 @@ requests**. Pairings are stored in the state database, not the config.
 
 ### Gateway and public access
 
-Config tab, once the tunnel is up (the wizard leaves insecure auth on, and `bind: lan`
-makes origin and rate-limit settings matter):
+Config tab, once the tunnel is up. `bind: lan` makes origin and rate-limit settings
+matter, and `openclaw security audit` reports a **critical** until the origins are set:
 
 | Key | Value |
 |---|---|
 | `gateway.trustedProxies` | `["172.25.0.10"]` — cloudflared's pinned address; see [Public dashboard access](#public-dashboard-access) |
-| `gateway.controlUi.allowedOrigins` | `["https://claw.example.com"]` |
-| `gateway.controlUi.allowInsecureAuth` | `false` |
+| `gateway.controlUi.allowedOrigins` | `["https://claw.example.com", "http://<unraid-ip>:18789"]` — the second entry keeps the LAN address usable; setting this key replaces the loopback defaults the gateway seeds |
 | `gateway.auth.rateLimit` | `{ maxAttempts: 10, windowMs: 60000, lockoutMs: 300000 }` |
-| `plugins.allow` | `["openai","codex","anthropic","discord","ollama","browser","memory-core"]` |
 
-`plugins.allow` is exhaustive, not additive: a plugin missing from it stays unloaded
-however it is configured elsewhere, so every plugin enabled above has to appear here,
-`memory-core` included (the allowlist gates bundled plugins too, and leaving it off drops
-memory search silently). The list is validated — an id the image doesn't ship is rejected
-as `plugin not found`. Set it last, after every plugin is enabled and working.
+`trustedProxies` applies at startup; restart the container after setting it. After
+saving anything under `controlUi`, check `gateway.controlUi.enabled` is still true and
+the dashboard still loads; a write there has been seen to leave it `false`.
 
 Then `docker exec openclaw openclaw security audit` should come back with zero criticals.
-It will warn about the unpinned `@openclaw/discord` npm spec; treat that as real (an
-unpinned spec can resolve to a broken build mid-upgrade,
-[openclaw#76798](https://github.com/openclaw/openclaw/issues/76798)) and pin it.
+Expected warnings: the unpinned npm specs for `codex` and `discord` (unpinned is what
+lets `plugins update` track the image version, so leave them), and the Discord
+multi-user heuristic, which drops to a note once the guild has a `users` restriction
+(see [Discord](#discord)).
 
 ### MCP servers
 
@@ -418,10 +420,10 @@ gateway token auth remains as a second layer.
 
 ## 1Password
 
-The `onepassword` plugin that docs.openclaw.ai describes does not exist in this image
-(`plugins.allow` rejects the id as `plugin not found`). What the image has is the `op`
-CLI (bind-mounted in Deploying step 3) authenticated by a service-account token from the
-environment, driven by the bundled 1password skill or the agent's exec tool.
+The image ships a stock `onepassword` plugin (a SecretRef resolver and brokered agent
+access with an approval policy) but this stack does not use it yet. What it uses is the
+`op` CLI (bind-mounted in Deploying step 3) authenticated by a service-account token
+from the environment, driven by the bundled 1password skill or the agent's exec tool.
 
 Create a **service account** at
 [1password.com](https://developer.1password.com/docs/service-accounts/) scoped
