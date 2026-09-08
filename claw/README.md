@@ -86,11 +86,31 @@ OpenClaw runs as its upstream fixed user (`node`, UID 1000) — it doesn't honor
    ```
 
    (`--env-file` path is wherever the Compose Manager plugin keeps this stack's `.env`.)
-   In the wizard: local mode, bind **lan** (the container's loopback is unreachable from
-   the host port and from cloudflared), token auth. For the model provider pick
-   **OpenAI Codex (device)** — `openai-codex-device` — which prints a code to enter at
-   the URL it shows; no browser callback is needed inside the container. Skip the
-   optional steps (skills, hooks, channels, bootstrap); those are done in the dashboard.
+   In the wizard: agent name **main** (any other name creates a second agent directory
+   and the workspace files are keyed to it), local mode, token auth. For the model
+   provider pick **OpenAI Codex (device)** — `openai-codex-device` — which prints a code
+   to enter at the URL it shows; no browser callback is needed inside the container.
+   Skip the optional steps (skills, hooks, channels, bootstrap, workspace files); those
+   are done in the dashboard.
+
+   The wizard writes `gateway.bind: loopback` regardless of what it is told, and the
+   container's loopback is unreachable from the host port and from cloudflared, so the
+   dashboard cannot be opened to fix it. This is the one config write a fresh install
+   makes by CLI, before first start:
+
+   ```sh
+   docker run --rm \
+     -e XDG_CACHE_HOME=/home/node/.openclaw/cache \
+     -v /mnt/user/appdata/openclaw/config:/home/node/.openclaw \
+     -v /mnt/user/appdata/openclaw/auth-secret:/home/node/.config/openclaw \
+     -v /mnt/user/claw:/home/node/.openclaw/workspace \
+     ghcr.io/openclaw/openclaw:latest-browser \
+     openclaw config set gateway.bind lan
+   ```
+
+   Both one-offs can also be run as `docker compose -p claw run --rm --no-deps openclaw
+   openclaw <subcommand ...>` from the Compose Manager project directory, which reuses
+   the stack's mounts and environment instead of repeating them.
 
    The `openclaw` before the subcommand is required, not a typo. The image entrypoint is
    `tini -s --` with a default command of `node openclaw.mjs gateway`, so a bare
