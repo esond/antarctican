@@ -1332,8 +1332,8 @@
             "type": "loki",
             "uid": "loki"
           },
-          "expr": "sum by (detected_level) (count_over_time({service_name=\"openclaw\"} [$__auto]))",
-          "legendFormat": "{{detected_level}}"
+          "expr": "sum by (severity_text) (count_over_time({service_name=\"openclaw\"} [$__auto]))",
+          "legendFormat": "{{severity_text}}"
         }
       ],
       "fieldConfig": {
@@ -1352,8 +1352,8 @@
         "overrides": [
           {
             "matcher": {
-              "id": "byName",
-              "options": "error"
+              "id": "byRegexp",
+              "options": "/error|fatal/i"
             },
             "properties": [
               {
@@ -1367,8 +1367,8 @@
           },
           {
             "matcher": {
-              "id": "byName",
-              "options": "warn"
+              "id": "byRegexp",
+              "options": "/warn/i"
             },
             "properties": [
               {
@@ -1382,8 +1382,8 @@
           },
           {
             "matcher": {
-              "id": "byName",
-              "options": "info"
+              "id": "byRegexp",
+              "options": "/info/i"
             },
             "properties": [
               {
@@ -1397,8 +1397,8 @@
           },
           {
             "matcher": {
-              "id": "byName",
-              "options": "debug"
+              "id": "byRegexp",
+              "options": "/debug|trace/i"
             },
             "properties": [
               {

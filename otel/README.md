@@ -151,7 +151,7 @@ its JSON back into the repo. Ad-hoc dashboards imported in the UI still persist 
   [25068](https://grafana.com/grafana/dashboards/25068-openclaw-diagnostics-otel/) with
   its datasources bound to the provisioned uids. The 22 metrics panels are upstream's;
   the five log and trace panels were written for OpenSearch and are rebuilt here on Loki
-  (`{service_name="openclaw"}`, levels from Loki's `detected_level`) and on Tempo
+  (`{service_name="openclaw"}`, levels from the OTLP `severity_text` metadata) and on Tempo
   TraceQL metrics (`{resource.service.name="openclaw"} | rate() by (name)`), which Tempo 3
   serves without extra config. Metric names follow the collector's remote-write naming
   (`openclaw_*_total`, `openclaw_*_ms_milliseconds_bucket`), which is what upstream's
