@@ -96,16 +96,6 @@ Two of these need explaining:
   for client discovery, but the exporter stays on a bridge with `extra_hosts:
   host-gateway` so its metrics port remains a one-line `.env` change like every other.
 
-Not instrumented: Plex, Tautulli and Tunarr (the whole `plex/` stack), Notifiarr, Seerr,
-Ollama, SWAG, and Unraid's temperatures, array and parity state. Where something is worth
-knowing before reaching for one of these: the Plex exporters are all dead, Seerr's is the
-Overseerr one and untested against it, Tunarr has none, Ollama's upstream `/metrics` PR is
-unmerged, SWAG means manual `stub_status` surgery for connection counts only, and the
-Unraid figures are invisible to `hostmetrics` — reaching them needs a bespoke GraphQL
-scraper. Tautulli and Notifiarr are the exceptions: both are straightforward to scrape
-(`mm503/tautulli-exporter` and Notifiarr's native `/metrics` behind an "Extra Key"), they
-just aren't wanted here.
-
 ## Deploying
 
 1. Create the appdata tree and hand the four data directories to `nobody:users`:
