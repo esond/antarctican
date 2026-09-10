@@ -105,12 +105,11 @@ Tunarr (nothing exists), Ollama (upstream `/metrics` PR unmerged), SWAG (manual
    cp /path/to/repo/otel/tempo/tempo.yaml /mnt/user/appdata/tempo/tempo.yaml
    cp /path/to/repo/otel/loki/loki.yaml /mnt/user/appdata/loki/loki.yaml
    cp /path/to/repo/otel/grafana/provisioning/datasources/datasources.yaml /mnt/user/appdata/grafana/provisioning/datasources/datasources.yaml
+   cp /path/to/repo/otel/grafana/provisioning/dashboards/* /mnt/user/appdata/grafana/provisioning/dashboards/
    ```
 
    Do this **before** the first start: a bind mount whose source is missing makes Docker
-   create a directory at that path, and the container then fails to read its config. The
-   empty `provisioning/dashboards` directory exists only because Grafana logs an error
-   at startup when it is absent from a mounted provisioning tree.
+   create a directory at that path, and the container then fails to read its config.
 
 3. Copy `.env.example` to `.env` and fill it in. The scrape-target ports and the CouchDB
    credentials must match the values in the other stacks' `.env` files.
@@ -142,12 +141,21 @@ Tunarr (nothing exists), Ollama (upstream `/metrics` PR unmerged), SWAG (manual
 
 ## Dashboards
 
-Datasources are provisioned and read-only. Dashboards are imported in the UI
-(Dashboards → New → Import) and persist in `${APPDATA}/grafana/data`:
+Datasources and the dashboards under `grafana/provisioning/dashboards/` are provisioned
+and read-only in the UI: edit the JSON here, copy it to the host, and Grafana picks the
+change up within 30 seconds. To iterate in the UI first, **Save as** a copy, then export
+its JSON back into the repo. Ad-hoc dashboards imported in the UI still persist in
+`${APPDATA}/grafana/data`.
 
-- OpenClaw: community dashboards [25068](https://grafana.com/grafana/dashboards/25068-openclaw-diagnostics-otel/)
-  and [25067](https://grafana.com/grafana/dashboards/25067-openclaw-otel-observability/).
-  Point them at the VictoriaMetrics datasource.
+- **OpenClaw** (`openclaw.json`): community dashboard
+  [25068](https://grafana.com/grafana/dashboards/25068-openclaw-diagnostics-otel/) with
+  its datasources bound to the provisioned uids. The 22 metrics panels are upstream's;
+  the five log and trace panels were written for OpenSearch and are rebuilt here on Loki
+  (`{service_name="openclaw"}`, levels from Loki's `detected_level`) and on Tempo
+  TraceQL metrics (`{resource.service.name="openclaw"} | rate() by (name)`), which Tempo 3
+  serves without extra config. Metric names follow the collector's remote-write naming
+  (`openclaw_*_total`, `openclaw_*_ms_milliseconds_bucket`), which is what upstream's
+  queries already use.
 - Host: any `hostmetrics`-receiver dashboard; the metric names are OpenTelemetry's
   (`system_*`), not node_exporter's (`node_*`), so node_exporter dashboards will not work.
 - Containers: `container_*` metrics from the `docker_stats` receiver, labelled by
@@ -175,6 +183,8 @@ Datasources are provisioned and read-only. Dashboards are imported in the UI
 - [Tempo — configuration](https://grafana.com/docs/tempo/latest/configuration/)
 - [Loki — OTLP ingestion](https://grafana.com/docs/loki/latest/send-data/otel/)
 - [Grafana — provisioning datasources](https://grafana.com/docs/grafana/latest/administration/provisioning/#data-sources)
+- [Grafana — provisioning dashboards](https://grafana.com/docs/grafana/latest/administration/provisioning/#dashboards)
+- [Tempo — TraceQL metrics](https://grafana.com/docs/tempo/latest/metrics-from-traces/metrics-queries/)
 - [Unpackerr — web server / metrics](https://unpackerr.zip/docs/install/configuration/)
 - [cloudflared — tunnel metrics](https://developers.cloudflare.com/cloudflare-one/networks/connectors/cloudflare-tunnel/monitor-tunnels/metrics/)
 - [CouchDB — Prometheus endpoint](https://docs.couchdb.org/en/stable/config/misc.html)

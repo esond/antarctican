@@ -1,0 +1,15 @@
+# Grafana dashboard provisioning. Lives at
+# ${APPDATA}/grafana/provisioning/dashboards/dashboards.yaml on the host
+# (copied from the repo, see README). Every *.json in the same directory is
+# loaded as a read-only dashboard; Grafana re-reads changed files on its own,
+# so copying an updated JSON to the host is enough.
+
+apiVersion: 1
+
+providers:
+  - name: otel
+    type: file
+    updateIntervalSeconds: 30
+    allowUiUpdates: false
+    options:
+      path: /etc/grafana/provisioning/dashboards
