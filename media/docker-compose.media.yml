@@ -100,6 +100,35 @@ services:
     labels:
       net.unraid.docker.shell: "bash"
 
+  # Prometheus /metrics for qBittorrent, scraped by the otel stack's collector.
+  # Deliberately on media-net rather than sharing qbittorrentvpn's network
+  # namespace: healarr restarts that container, and those restarts are exactly
+  # what this exporter is here to make visible. `qbittorrent_firewalled` is the
+  # NAT-PMP stall the healthcheck trips on.
+  #
+  # The healthcheck gets away without credentials because binhex bypasses auth
+  # for localhost; this container is a different host on the bridge, so it needs
+  # real WebUI credentials.
+  qbittorrent-exporter:
+    image: ghcr.io/esanchezm/prometheus-qbittorrent-exporter:latest
+    container_name: qbittorrent-exporter
+    depends_on:
+      - qbittorrentvpn
+    environment:
+      - TZ=${TZ}
+      - QBITTORRENT_HOST=qbittorrentvpn
+      - QBITTORRENT_PORT=${QBITTORRENT_WEBUI_PORT}
+      - QBITTORRENT_USER=${QBITTORRENT_WEBUI_USER}
+      - QBITTORRENT_PASS=${QBITTORRENT_WEBUI_PASSWORD}
+      - EXPORTER_PORT=8000
+    ports:
+      - ${QBITTORRENT_METRICS_HOST_PORT}:8000
+    restart: unless-stopped
+    networks:
+      - media-net
+    labels:
+      net.unraid.docker.shell: "sh"
+
   flaresolverr:
     image: 21hsmw/flaresolverr:nodriver
     container_name: flaresolverr
@@ -186,6 +215,46 @@ services:
     labels:
       net.unraid.docker.webui: "http://[IP]:[PORT:${RADARR_UHD_HOST_PORT}]"
       net.unraid.docker.icon: "https://wiki.servarr.com/assets/radarr/logos/128.png"
+      net.unraid.docker.shell: "sh"
+
+  # One Prometheus /metrics endpoint covering all three arrs (queue, health,
+  # indexer and download-client stats), scraped by the otel stack's collector.
+  # Configured entirely by env: with no /scraparr/config/config.yaml present it
+  # falls back to <APP>_URL / <APP>_API_KEY, which avoids another tracked file to
+  # copy into appdata. Apps left unset are skipped, and a container with nothing
+  # configured exits rather than serving an empty /metrics.
+  #
+  # 7100 is fixed here -- in env mode scraparr ignores the GENERAL_* settings and
+  # uses its built-in default, so remap the host side only.
+  scraparr:
+    image: ghcr.io/thecfu/scraparr:latest
+    container_name: scraparr
+    depends_on:
+      - sonarr-uhd
+      - radarr-uhd
+      - prowlarr
+      - seerr
+    environment:
+      - TZ=${TZ}
+      - SONARR_URL=http://sonarr-uhd:8989
+      - SONARR_API_KEY=${SONARR_UHD_API_KEY}
+      - RADARR_URL=http://radarr-uhd:7878
+      - RADARR_API_KEY=${RADARR_UHD_API_KEY}
+      - PROWLARR_URL=http://prowlarr:9696
+      - PROWLARR_API_KEY=${PROWLARR_API_KEY}
+      # Seerr under the OVERSEERR_ prefix: scraparr has no `seerr` connector,
+      # and Seerr is the renamed Overseerr with the same /api/v1. The alias is
+      # set explicitly because scraparr's seerr connector indexes config['alias']
+      # directly and raises without it, unlike the arr connectors.
+      - OVERSEERR_URL=http://seerr:5055
+      - OVERSEERR_API_KEY=${SEERR_API_KEY}
+      - OVERSEERR_ALIAS=seerr
+    ports:
+      - ${SCRAPARR_METRICS_HOST_PORT}:7100
+    restart: unless-stopped
+    networks:
+      - media-net
+    labels:
       net.unraid.docker.shell: "sh"
 
   notifiarr:

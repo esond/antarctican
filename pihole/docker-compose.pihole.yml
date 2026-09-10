@@ -32,3 +32,26 @@ services:
       net.unraid.docker.webui: "https://[IP]:[PORT:${PIHOLE_HTTPS_PORT}]/admin"
       net.unraid.docker.icon: "https://wp-cdn.pi-hole.net/wp-content/uploads/2016/12/Vortex-R.png"
       net.unraid.docker.shell: "sh"
+
+  # Prometheus /metrics for Pi-hole, scraped by the otel stack's collector.
+  # Pi-hole v6 dropped the old API the common exporters use and replaced it with
+  # a session-based one; this fork re-authenticates on its own when the session
+  # expires. It reaches Pi-hole by service name on pihole-net, so it uses the
+  # container-internal port 80 rather than ${PIHOLE_HTTP_PORT}. The API token is
+  # the same admin password the container is configured with.
+  pihole-exporter:
+    image: ghcr.io/mosher-labs/pihole6-exporter:latest
+    container_name: pihole-exporter
+    depends_on:
+      - pihole
+    command: ["-H", "pihole", "--pihole-port", "80", "--protocol", "http"]
+    environment:
+      - TZ=${TZ}
+      - PIHOLE_API_TOKEN=${PIHOLE_FTLCONF_webserver_api_password}
+    ports:
+      - ${PIHOLE_METRICS_HOST_PORT}:9617
+    restart: unless-stopped
+    networks:
+      - pihole-net
+    labels:
+      net.unraid.docker.shell: "sh"

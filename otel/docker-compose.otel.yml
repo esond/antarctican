@@ -34,6 +34,10 @@ services:
       - COUCHDB_PORT=${COUCHDB_PORT}
       - COUCHDB_USER=${COUCHDB_USER}
       - COUCHDB_PASSWORD=${COUCHDB_PASSWORD}
+      - QBITTORRENT_METRICS_PORT=${QBITTORRENT_METRICS_PORT}
+      - SCRAPARR_METRICS_PORT=${SCRAPARR_METRICS_PORT}
+      - PIHOLE_METRICS_PORT=${PIHOLE_METRICS_PORT}
+      - URBACKUP_METRICS_PORT=${URBACKUP_METRICS_PORT}
     volumes:
       - ${APPDATA}/otel-collector/config.yaml:/etc/otelcol-contrib/config.yaml:ro
       # Host root for the hostmetrics receiver (root_path: /hostfs in config).

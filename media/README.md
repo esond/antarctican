@@ -19,6 +19,8 @@ requests. Deployed from `docker-compose.media.yml` via the Docker Compose Manage
 | `swag` | lscr.io/linuxserver/swag | Reverse proxy + TLS (`${SWAG_URL}` wildcard) | `81` (dashboard) |
 | `dockersocket` | tecnativa/docker-socket-proxy | Scoped Docker API for healarr | — |
 | `healarr` | binhex/arch-healarr | Restarts qbittorrentvpn when its VPN port stalls | — |
+| `qbittorrent-exporter` | ghcr.io/esanchezm/prometheus-qbittorrent-exporter | Prometheus metrics for qBittorrent | — |
+| `scraparr` | ghcr.io/thecfu/scraparr | Prometheus metrics for Sonarr, Radarr, Prowlarr and Seerr | — |
 
 The arrs and `unpackerr` `depends_on` `qbittorrentvpn` and reach it over the `media-net`
 bridge. SWAG fronts the other UIs and owns 80/443/81 on the host.
@@ -135,6 +137,45 @@ status and `docker restart`s the container to force a fresh VPN reconnect + port
 negotiation. healarr reaches the Docker API only through `dockersocket`, a
 `docker-socket-proxy` scoped to container read + POST, so nothing in the stack touches the
 raw `docker.sock`. End to end a stall self-heals in roughly two minutes.
+
+## Metrics
+
+Four services in this stack are scraped by the [otel stack](../otel/), each on a published
+host port — that stack never joins `media-net`, so nothing here depends on it running.
+Notifiarr also serves a `/metrics` endpoint, but it isn't scraped.
+
+| Service | Endpoint | Port var |
+|---|---|---|
+| `unpackerr` | native `/metrics` (`UN_WEBSERVER_METRICS=true`) | `UNPACKERR_METRICS_HOST_PORT` |
+| `flaresolverr` | native `/metrics` (`PROMETHEUS_ENABLED=true`) | `FLARESOLVERR_METRICS_HOST_PORT` |
+| `qbittorrent-exporter` | qBittorrent's WebUI API | `QBITTORRENT_METRICS_HOST_PORT` |
+| `scraparr` | Sonarr, Radarr, Prowlarr and Seerr APIs, one endpoint | `SCRAPARR_METRICS_HOST_PORT` |
+
+Credentials and the scrape-side setup are documented in the [otel
+README](../otel/README.md#exporter-sidecars). Three things specific to this stack:
+
+- **`qbittorrent-exporter` needs WebUI credentials** (`QBITTORRENT_WEBUI_USER` /
+  `QBITTORRENT_WEBUI_PASSWORD`), even though the container's healthcheck doesn't. The
+  healthcheck runs *inside* the container and binhex bypasses auth for localhost; the
+  exporter is a separate host on `media-net` and gets no such pass.
+- **`scraparr` reuses the apps' own API keys** — `SONARR_UHD_API_KEY` and
+  `RADARR_UHD_API_KEY` hold the same values as the `UNPACKERR_*_API_KEY` vars, kept
+  separate so each consumer's config reads on its own; `PROWLARR_API_KEY` and
+  `SEERR_API_KEY` are each app's key from Settings → General.
+- **Seerr is configured under scraparr's `OVERSEERR_` prefix.** scraparr has no `seerr`
+  connector — its `ACTIVE_CONNECTORS` list covers `overseerr` and `jellyseerr` — and Seerr
+  is the renamed Overseerr with the same `/api/v1`, so the Overseerr connector reads it
+  fine. Its metrics come out as `overseerr_*` labelled `scraparr_services="overseerr"` —
+  the connector name, not the app's — which is why the dashboard's Seerr row matches that
+  label with a regex rather than upstream's literal `"seerr"`. `OVERSEERR_ALIAS=seerr` is
+  set explicitly for two reasons: that connector indexes `config['alias']` directly and
+  raises without it, and it's what labels the series with the name you actually use.
+
+The qBittorrent exporter makes the VPN stall directly visible: `qbittorrent_firewalled`
+goes to 1 on exactly the condition the healthcheck trips on, so the dashboard shows the
+stall itself rather than only healarr's restart after the fact. That is also why the
+exporter sits on `media-net` instead of sharing `qbittorrentvpn`'s network namespace — it
+would go down with every restart it is there to record.
 
 ## Notes
 

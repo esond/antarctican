@@ -56,6 +56,19 @@ receivers:
             password: ${env:COUCHDB_PASSWORD}
           static_configs:
             - targets: ["host.docker.internal:${env:COUCHDB_PORT}"]
+        - job_name: qbittorrent
+          static_configs:
+            - targets: ["host.docker.internal:${env:QBITTORRENT_METRICS_PORT}"]
+        # Sonarr, Radarr, Prowlarr and Seerr, all four behind one scraparr endpoint.
+        - job_name: scraparr
+          static_configs:
+            - targets: ["host.docker.internal:${env:SCRAPARR_METRICS_PORT}"]
+        - job_name: pihole
+          static_configs:
+            - targets: ["host.docker.internal:${env:PIHOLE_METRICS_PORT}"]
+        - job_name: urbackup
+          static_configs:
+            - targets: ["host.docker.internal:${env:URBACKUP_METRICS_PORT}"]
 
 processors:
   memory_limiter:

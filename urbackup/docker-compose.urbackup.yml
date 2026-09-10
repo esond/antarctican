@@ -16,3 +16,27 @@ services:
       net.unraid.docker.webui: 'http://[IP]:[PORT:55414]'
       net.unraid.docker.icon: 'https://urbackup.atlassian.net/wiki/download/attachments/360449/atl.site.logo?version=2&modificationDate=1361821373617&cacheVersion=1&api=v2'
       net.unraid.docker.shell: 'sh'
+
+  # Prometheus /metrics for UrBackup (client online state, backup age, sizes),
+  # scraped by the otel stack's collector. The server itself is network_mode:
+  # host for client discovery; this stays on a bridge so its metrics port stays
+  # a one-line .env change, and reaches the server back through host-gateway.
+  # 55414 is the server's own fixed port, matching the WebUI label above.
+  urbackup-exporter:
+    image: ghcr.io/ngosang/urbackup-exporter:latest
+    container_name: urbackup-exporter
+    depends_on:
+      - urbackup
+    environment:
+      - TZ=${TZ}
+      - URBACKUP_SERVER_URL=http://host.docker.internal:55414/x
+      - URBACKUP_SERVER_USERNAME=${URBACKUP_SERVER_USERNAME}
+      - URBACKUP_SERVER_PASSWORD=${URBACKUP_SERVER_PASSWORD}
+      - LISTEN_PORT=9554
+    ports:
+      - ${URBACKUP_METRICS_HOST_PORT}:9554
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+    restart: unless-stopped
+    labels:
+      net.unraid.docker.shell: 'sh'

@@ -34,9 +34,16 @@ Two paths, both ending at the collector:
   by the collector's `prometheus` receiver. Each one lives in another stack and is reached
   on its **published host port** through `host.docker.internal`, so this stack never joins
   another stack's network and every stack still starts and stops on its own. Adding a
-  target is three edits: publish the port in the other stack with a
-  `${SERVICE_METRICS_HOST_PORT}` var, add the matching port var to this stack's `.env`,
-  and add a `scrape_configs` job in `otel-collector/config.yaml`.
+  target is four edits:
+
+  1. Publish the port in the other stack with a `${SERVICE_METRICS_HOST_PORT}` var.
+  2. Add the matching port var to this stack's `.env` and `.env.example`.
+  3. Pass that var into the collector's `environment:` in `docker-compose.otel.yml`.
+  4. Add a `scrape_configs` job in `otel-collector/config.yaml`.
+
+  Step 3 is the one that's easy to miss and fails quietly: `${env:...}` in the collector
+  config resolves against the container's environment, so a var that isn't passed through
+  becomes an empty string and that one scrape job dies while everything else keeps working.
 
 The collector also reads the Unraid host itself (`hostmetrics` receiver over the `/:/hostfs`
 mount) and every container's CPU, memory, network and block IO (`docker_stats` receiver
@@ -57,37 +64,37 @@ to Tempo over OTLP/gRPC and logs to Loki's native OTLP endpoint, both on `otel-n
 | FlareSolverr (`media/`) | metrics | native `/metrics`, `PROMETHEUS_ENABLED=true` |
 | cloudflared (`claw/`) | metrics | native `/metrics` via `--metrics 0.0.0.0:20241` |
 | CouchDB (`notes/`) | metrics | native `/_node/_local/_prometheus` on the normal port, admin basic auth |
+| qBittorrent (`media/`) | metrics | `qbittorrent-exporter` sidecar, WebUI credentials |
+| Sonarr / Radarr / Prowlarr / Seerr (`media/`) | metrics | `scraparr` sidecar, one endpoint for all four, per-app API keys |
+| Pi-hole (`pihole/`) | metrics | `pihole-exporter` sidecar (v6 session API), admin password |
+| UrBackup (`urbackup/`) | metrics | `urbackup-exporter` sidecar, admin login |
 
-## Next steps
+## Exporter sidecars
 
-Everything wired today is native or free. The rest needs an exporter sidecar and an API
-key each, so it is a separate pass. Suggested order, most signal per effort first:
+Four of the sources above have no native Prometheus endpoint and get an exporter instead.
+Each one follows the same rule: the exporter lives in the stack that owns the service, on
+that stack's network, with the credentials in that stack's `.env` — so the service and its
+exporter start, stop and redeploy together, and this stack only ever sees a host port.
 
-1. **qBittorrent** via `esanchezm/prometheus-qbittorrent-exporter`. Exposes a `firewalled`
-   gauge, i.e. the NAT-PMP stall healarr restarts on, so the stall becomes visible rather
-   than just its restart.
-2. **Sonarr / Radarr / Prowlarr** via `thecfu/scraparr` (actively released;
-   `onedr0p/exportarr:latest` lags its main branch by a year, pin a tag if used). Queue,
-   health, indexer and download-client stats.
-3. **Notifiarr**: native `/metrics`, needs an "Extra Key" in its config and an
-   `X-Api-Key` header on the scrape job.
-4. **Tautulli** via `mm503/tautulli-exporter` for Plex playback; the Plex exporters
-   themselves are unmaintained.
-5. **UrBackup** via `ngosang/urbackup-exporter`, ships a Grafana dashboard.
-6. **Pi-hole v6** via `Mosher-Labs/pihole6-exporter` (fork with automatic session re-auth
-   for the v6 API).
-7. **Unraid temperatures, array and parity state.** Not visible to `hostmetrics`; needs
-   the Unraid GraphQL API and there is no ready-made exporter, so a small custom scrape.
+| Exporter | Stack | Reaches the service via | Credential |
+|---|---|---|---|
+| `qbittorrent-exporter` | `media` | `qbittorrentvpn` on `media-net` | `QBITTORRENT_WEBUI_USER` / `_PASSWORD` |
+| `scraparr` | `media` | `sonarr-uhd`, `radarr-uhd`, `prowlarr`, `seerr` on `media-net` | each app's API key |
+| `pihole-exporter` | `pihole` | `pihole` on `pihole-net`, container port 80 | `PIHOLE_FTLCONF_webserver_api_password` |
+| `urbackup-exporter` | `urbackup` | `host.docker.internal:55414` | `URBACKUP_SERVER_USERNAME` / `_PASSWORD` |
 
-The pattern for 1-6 is the one already in use: the exporter runs as a sidecar in the
-stack that owns the service (on that stack's network, with the API key in that stack's
-`.env`), publishes its metrics port as `${SERVICE_METRICS_HOST_PORT}`, and this stack gets
-the matching port var in `.env.example` plus a `scrape_configs` job in
-`otel-collector/config.yaml`.
+Two of these need explaining:
 
-Not worth it: Plex (exporters dead), Seerr (predecessor exporter untested against Seerr),
-Tunarr (nothing exists), Ollama (upstream `/metrics` PR unmerged), SWAG (manual
-`stub_status` surgery for connection counts only).
+- **qBittorrent's exporter needs real credentials**, unlike the container's own
+  healthcheck — binhex bypasses auth for localhost only, and the exporter is a separate
+  host on the bridge. It also deliberately sits on `media-net` rather than sharing
+  `qbittorrentvpn`'s network namespace: healarr restarts that container, and those
+  restarts are the thing the exporter exists to make visible. `qbittorrent_firewalled` is
+  the NAT-PMP stall itself, so the stall is now a metric rather than only an inferred
+  restart.
+- **UrBackup's exporter is the one bridge exception.** The server is `network_mode: host`
+  for client discovery, but the exporter stays on a bridge with `extra_hosts:
+  host-gateway` so its metrics port remains a one-line `.env` change like every other.
 
 ## Deploying
 
@@ -114,8 +121,10 @@ Tunarr (nothing exists), Ollama (upstream `/metrics` PR unmerged), SWAG (manual
 3. Copy `.env.example` to `.env` and fill it in. The scrape-target ports and the CouchDB
    credentials must match the values in the other stacks' `.env` files.
 
-4. Redeploy the stacks that gained a metrics port (`media`, `claw`) so the new ports and
-   env vars take effect, then start this stack from the Compose Manager plugin.
+4. Redeploy every stack that publishes a metrics port — `media`, `claw`, `pihole` and
+   `urbackup` — so the new ports and env vars take effect, then start this stack from the
+   Compose Manager plugin. Each of those stacks needs its own new `.env` values first
+   (API keys and metrics ports); see its `.env.example`.
 
 5. Enable OpenClaw's exporter (claw README, Telemetry).
 
@@ -135,6 +144,19 @@ Tunarr (nothing exists), Ollama (upstream `/metrics` PR unmerged), SWAG (manual
   One series per scrape job, value `1`. `system_cpu_time_seconds_total` and
   `container_cpu_utilization_ratio` confirm the host and Docker receivers.
 
+  `up == 0` narrows the problem to one job: the target is reachable but returning an
+  error, usually bad credentials. `up` missing a job entirely means the target never
+  resolved — check that its port var reached the collector's environment (step 3 of the
+  four edits above).
+
+- Each exporter answers on the host directly, which separates "the exporter is broken"
+  from "the collector can't reach it":
+
+  ```sh
+  curl -s localhost:${QBITTORRENT_METRICS_PORT}/metrics | head
+  curl -s localhost:${SCRAPARR_METRICS_PORT}/metrics | head
+  ```
+
 - Grafana: `http://<unraid-ip>:${GRAFANA_HOST_PORT}`, log in with the admin values from
   `.env`. Connections → Data sources should list VictoriaMetrics, Tempo and Loki, each
   passing **Test**. Explore → Tempo → Search shows OpenClaw runs once the plugin is on.
@@ -146,6 +168,39 @@ and read-only in the UI: edit the JSON here, copy it to the host, and Grafana pi
 change up within 30 seconds. To iterate in the UI first, **Save as** a copy, then export
 its JSON back into the repo. Ad-hoc dashboards imported in the UI still persist in
 `${APPDATA}/grafana/data`.
+
+Each stack that feeds this one has a dashboard, tagged with the stack name so Grafana's
+dashboard list groups them. All four are upstream dashboards imported and rebound.
+
+| Dashboard | File | Tags | Source |
+|---|---|---|---|
+| qBittorrent | `qbittorrent.json` | `media` | exporter repo's `grafana/dashboard.json` |
+| Arrs (scraparr) | `scraparr.json` | `media` | [22934](https://grafana.com/grafana/dashboards/22934) |
+| Pi-hole | `pihole.json` | `pihole` | [21043](https://grafana.com/grafana/dashboards/21043) |
+| UrBackup | `urbackup.json` | `urbackup` | exporter repo's `grafana/grafana_dashboard.json` |
+
+Importing an upstream dashboard into this stack means two mechanical changes, the same
+ones `openclaw.json` got. An upstream file is built to be *imported through the UI*: it
+carries an `__inputs` block that prompts for a datasource, and its panels reference that
+answer as `${DS_PROMETHEUS}`. A provisioned dashboard never sees that prompt, so both have
+to go — drop `__inputs`/`__requires` and the datasource-picker template variable, and
+rewrite every datasource reference to the concrete provisioned uid (`victoriametrics`,
+`tempo`, `loki`). Annotation queries pointing at the built-in `-- Grafana --` datasource
+are correct as they are; leave them.
+
+Two things worth knowing:
+
+- **A panel reading "No data" is worth checking before rewriting.** Every panel here has
+  been seen carrying real data, so the usual cause is an idle service rather than a broken
+  query — but a metric name can also shift on its way through the collector's remote-write
+  naming. Confirm the metric exists in vmui first.
+- **The scraparr dashboard is trimmed and patched, unlike the others.** Upstream 22934
+  covers every service scraparr supports; the Readarr and Bazarr rows, their panels and
+  their template variables are dropped here, leaving Seerr, Prowlarr, Sonarr and Radarr.
+  Its Seerr row also filters on `scraparr_services="seerr"`, a value scraparr never emits
+  — the label carries the *connector* name (`overseerr` or `jellyseerr`), so those three
+  queries match it with a regex instead. Re-adding a service means re-importing 22934 and
+  redoing both changes rather than diffing against this copy.
 
 - **OpenClaw** (`openclaw.json`): community dashboard
   [25068](https://grafana.com/grafana/dashboards/25068-openclaw-diagnostics-otel/) with
@@ -188,3 +243,7 @@ its JSON back into the repo. Ad-hoc dashboards imported in the UI still persist 
 - [Unpackerr — web server / metrics](https://unpackerr.zip/docs/install/configuration/)
 - [cloudflared — tunnel metrics](https://developers.cloudflare.com/cloudflare-one/networks/connectors/cloudflare-tunnel/monitor-tunnels/metrics/)
 - [CouchDB — Prometheus endpoint](https://docs.couchdb.org/en/stable/config/misc.html)
+- [prometheus-qbittorrent-exporter](https://github.com/esanchezm/prometheus-qbittorrent-exporter)
+- [scraparr](https://github.com/thecfu/scraparr) — env vars in its `sample.env`
+- [pihole6-exporter](https://github.com/Mosher-Labs/pihole6-exporter)
+- [urbackup-exporter](https://github.com/ngosang/urbackup-exporter)
