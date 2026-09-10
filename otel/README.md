@@ -58,24 +58,35 @@ to Tempo over OTLP/gRPC and logs to Loki's native OTLP endpoint, both on `otel-n
 | cloudflared (`claw/`) | metrics | native `/metrics` via `--metrics 0.0.0.0:20241` |
 | CouchDB (`notes/`) | metrics | native `/_node/_local/_prometheus` on the normal port, admin basic auth |
 
-Host temperatures, array and parity state are **not** covered: nothing exposes them to
-`hostmetrics`. They need the Unraid GraphQL API and are a later addition.
+## Next steps
 
-### Candidates for a second wave
+Everything wired today is native or free. The rest needs an exporter sidecar and an API
+key each, so it is a separate pass. Suggested order, most signal per effort first:
 
-Each needs an exporter sidecar plus an API key; none are wired yet.
+1. **qBittorrent** via `esanchezm/prometheus-qbittorrent-exporter`. Exposes a `firewalled`
+   gauge, i.e. the NAT-PMP stall healarr restarts on, so the stall becomes visible rather
+   than just its restart.
+2. **Sonarr / Radarr / Prowlarr** via `thecfu/scraparr` (actively released;
+   `onedr0p/exportarr:latest` lags its main branch by a year, pin a tag if used). Queue,
+   health, indexer and download-client stats.
+3. **Notifiarr**: native `/metrics`, needs an "Extra Key" in its config and an
+   `X-Api-Key` header on the scrape job.
+4. **Tautulli** via `mm503/tautulli-exporter` for Plex playback; the Plex exporters
+   themselves are unmaintained.
+5. **UrBackup** via `ngosang/urbackup-exporter`, ships a Grafana dashboard.
+6. **Pi-hole v6** via `Mosher-Labs/pihole6-exporter` (fork with automatic session re-auth
+   for the v6 API).
+7. **Unraid temperatures, array and parity state.** Not visible to `hostmetrics`; needs
+   the Unraid GraphQL API and there is no ready-made exporter, so a small custom scrape.
 
-| Service | Exporter | Notes |
-|---|---|---|
-| Sonarr / Radarr / Prowlarr | `thecfu/scraparr` | Actively released. `onedr0p/exportarr:latest` lags its main branch by a year; if used, pin a tag. |
-| qBittorrent | `esanchezm/prometheus-qbittorrent-exporter` | Exposes a `firewalled` gauge, i.e. the NAT-PMP stall healarr restarts on. |
-| Notifiarr | none, native `/metrics` | Needs an "Extra Key" in its config and an `X-Api-Key` header on the scrape. |
-| Tautulli | `mm503/tautulli-exporter` | Covers Plex playback; the Plex exporters themselves are unmaintained. |
-| UrBackup | `ngosang/urbackup-exporter` | Ships a Grafana dashboard. |
-| Pi-hole v6 | `Mosher-Labs/pihole6-exporter` | Fork with automatic session re-auth for the v6 API. |
+The pattern for 1-6 is the one already in use: the exporter runs as a sidecar in the
+stack that owns the service (on that stack's network, with the API key in that stack's
+`.env`), publishes its metrics port as `${SERVICE_METRICS_HOST_PORT}`, and this stack gets
+the matching port var in `.env.example` plus a `scrape_configs` job in
+`otel-collector/config.yaml`.
 
-Not worth it right now: Plex (exporters dead), Seerr (predecessor exporter untested against
-Seerr), Tunarr (nothing exists), Ollama (upstream `/metrics` PR unmerged), SWAG (manual
+Not worth it: Plex (exporters dead), Seerr (predecessor exporter untested against Seerr),
+Tunarr (nothing exists), Ollama (upstream `/metrics` PR unmerged), SWAG (manual
 `stub_status` surgery for connection counts only).
 
 ## Deploying
