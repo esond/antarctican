@@ -20,7 +20,7 @@ requests. Deployed from `docker-compose.media.yml` via the Docker Compose Manage
 | `dockersocket` | tecnativa/docker-socket-proxy | Scoped Docker API for healarr | — |
 | `healarr` | binhex/arch-healarr | Restarts qbittorrentvpn when its VPN port stalls | — |
 | `qbittorrent-exporter` | ghcr.io/esanchezm/prometheus-qbittorrent-exporter | Prometheus metrics for qBittorrent | — |
-| `scraparr` | ghcr.io/thecfu/scraparr | Prometheus metrics for Sonarr, Radarr and Prowlarr | — |
+| `scraparr` | ghcr.io/thecfu/scraparr | Prometheus metrics for Sonarr, Radarr, Prowlarr and Seerr | — |
 
 The arrs and `unpackerr` `depends_on` `qbittorrentvpn` and reach it over the `media-net`
 bridge. SWAG fronts the other UIs and owns 80/443/81 on the host.
@@ -149,18 +149,25 @@ Notifiarr also serves a `/metrics` endpoint, but it isn't scraped.
 | `unpackerr` | native `/metrics` (`UN_WEBSERVER_METRICS=true`) | `UNPACKERR_METRICS_HOST_PORT` |
 | `flaresolverr` | native `/metrics` (`PROMETHEUS_ENABLED=true`) | `FLARESOLVERR_METRICS_HOST_PORT` |
 | `qbittorrent-exporter` | qBittorrent's WebUI API | `QBITTORRENT_METRICS_HOST_PORT` |
-| `scraparr` | Sonarr, Radarr and Prowlarr APIs, one endpoint | `SCRAPARR_METRICS_HOST_PORT` |
+| `scraparr` | Sonarr, Radarr, Prowlarr and Seerr APIs, one endpoint | `SCRAPARR_METRICS_HOST_PORT` |
 
 Credentials and the scrape-side setup are documented in the [otel
-README](../otel/README.md#exporter-sidecars). Two things specific to this stack:
+README](../otel/README.md#exporter-sidecars). Three things specific to this stack:
 
 - **`qbittorrent-exporter` needs WebUI credentials** (`QBITTORRENT_WEBUI_USER` /
   `QBITTORRENT_WEBUI_PASSWORD`), even though the container's healthcheck doesn't. The
   healthcheck runs *inside* the container and binhex bypasses auth for localhost; the
   exporter is a separate host on `media-net` and gets no such pass.
-- **`scraparr` reuses the arrs' API keys** — `SONARR_UHD_API_KEY`, `RADARR_UHD_API_KEY`
-  and `PROWLARR_API_KEY` hold the same values as the `UNPACKERR_*_API_KEY` vars, kept
-  separate so each consumer's config reads on its own.
+- **`scraparr` reuses the apps' own API keys** — `SONARR_UHD_API_KEY` and
+  `RADARR_UHD_API_KEY` hold the same values as the `UNPACKERR_*_API_KEY` vars, kept
+  separate so each consumer's config reads on its own; `PROWLARR_API_KEY` and
+  `SEERR_API_KEY` are each app's key from Settings → General.
+- **Seerr is configured under scraparr's `OVERSEERR_` prefix.** scraparr has no `seerr`
+  connector — its `ACTIVE_CONNECTORS` list covers `overseerr` and `jellyseerr` — and Seerr
+  is the renamed Overseerr with the same `/api/v1`, so the Overseerr connector reads it
+  fine. Its metrics come out as `overseerr_*` with `scraparr_services="seerr"`, which is
+  what the dashboard's Seerr row already expects. `OVERSEERR_ALIAS` is set explicitly
+  because that connector indexes `config['alias']` directly and raises without it.
 
 The qBittorrent exporter makes the VPN stall directly visible: `qbittorrent_firewalled`
 goes to 1 on exactly the condition the healthcheck trips on, so the dashboard shows the

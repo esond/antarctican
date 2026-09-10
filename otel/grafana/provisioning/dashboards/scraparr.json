@@ -28,6 +28,1001 @@
         "x": 0,
         "y": 0
       },
+      "id": 55,
+      "panels": [],
+      "repeat": "seerr",
+      "title": "Seerr ${seerr}",
+      "type": "row"
+    },
+    {
+      "datasource": {
+        "type": "prometheus",
+        "uid": "victoriametrics"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "color": {
+            "mode": "thresholds"
+          },
+          "mappings": [
+            {
+              "options": {
+                "0": {
+                  "color": "semi-dark-red",
+                  "index": 0,
+                  "text": "Offline"
+                },
+                "1": {
+                  "color": "semi-dark-green",
+                  "index": 1,
+                  "text": "Online"
+                }
+              },
+              "type": "value"
+            },
+            {
+              "options": {
+                "match": "null+nan",
+                "result": {
+                  "color": "semi-dark-red",
+                  "index": 2,
+                  "text": "Offline"
+                }
+              },
+              "type": "special"
+            }
+          ],
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": null
+              },
+              {
+                "color": "red",
+                "value": 80
+              }
+            ]
+          }
+        },
+        "overrides": []
+      },
+      "gridPos": {
+        "h": 4,
+        "w": 5,
+        "x": 0,
+        "y": 1
+      },
+      "id": 56,
+      "options": {
+        "colorMode": "value",
+        "graphMode": "none",
+        "justifyMode": "auto",
+        "orientation": "auto",
+        "percentChangeColorMode": "standard",
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "",
+          "values": false
+        },
+        "showPercentChange": false,
+        "textMode": "auto",
+        "wideLayout": true
+      },
+      "pluginVersion": "11.5.1",
+      "targets": [
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "victoriametrics"
+          },
+          "disableTextWrap": false,
+          "editorMode": "builder",
+          "expr": "scraparr_services_up{job=\"$job\", scraparr_services=\"seerr\", alias=\"$seerr\"}",
+          "fullMetaSearch": false,
+          "includeNullMetadata": true,
+          "legendFormat": "__auto",
+          "range": true,
+          "refId": "A",
+          "useBackend": false
+        }
+      ],
+      "title": "Status",
+      "type": "stat"
+    },
+    {
+      "datasource": {
+        "type": "prometheus",
+        "uid": "victoriametrics"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "color": {
+            "mode": "thresholds"
+          },
+          "mappings": [],
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": null
+              }
+            ]
+          },
+          "unit": "Users"
+        },
+        "overrides": [
+          {
+            "matcher": {
+              "id": "byValue",
+              "options": {
+                "op": "eq",
+                "reducer": "lastNotNull",
+                "value": 1
+              }
+            },
+            "properties": [
+              {
+                "id": "unit",
+                "value": "User"
+              }
+            ]
+          }
+        ]
+      },
+      "gridPos": {
+        "h": 4,
+        "w": 3,
+        "x": 5,
+        "y": 1
+      },
+      "id": 59,
+      "options": {
+        "colorMode": "value",
+        "graphMode": "none",
+        "justifyMode": "auto",
+        "orientation": "auto",
+        "percentChangeColorMode": "standard",
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "",
+          "values": false
+        },
+        "showPercentChange": false,
+        "textMode": "auto",
+        "wideLayout": true
+      },
+      "pluginVersion": "11.5.1",
+      "targets": [
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "victoriametrics"
+          },
+          "disableTextWrap": false,
+          "editorMode": "code",
+          "expr": "jellyseerr_user_total{job=\"$job\", alias=\"$seerr\"} or overseerr_user_total{job=\"$job\", alias=\"$seerr\"}",
+          "fullMetaSearch": false,
+          "includeNullMetadata": true,
+          "legendFormat": "__auto",
+          "range": true,
+          "refId": "A",
+          "useBackend": false
+        }
+      ],
+      "title": "User Count",
+      "type": "stat"
+    },
+    {
+      "datasource": {
+        "type": "prometheus",
+        "uid": "victoriametrics"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "color": {
+            "mode": "thresholds"
+          },
+          "mappings": [],
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": null
+              },
+              {
+                "color": "#EAB839",
+                "value": 30
+              },
+              {
+                "color": "semi-dark-red",
+                "value": 60
+              }
+            ]
+          },
+          "unit": "dtdurations"
+        },
+        "overrides": []
+      },
+      "gridPos": {
+        "h": 4,
+        "w": 3,
+        "x": 8,
+        "y": 1
+      },
+      "id": 58,
+      "options": {
+        "colorMode": "value",
+        "graphMode": "none",
+        "justifyMode": "auto",
+        "orientation": "auto",
+        "percentChangeColorMode": "standard",
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "",
+          "values": false
+        },
+        "showPercentChange": false,
+        "textMode": "auto",
+        "wideLayout": true
+      },
+      "pluginVersion": "11.5.1",
+      "targets": [
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "victoriametrics"
+          },
+          "disableTextWrap": false,
+          "editorMode": "code",
+          "expr": "time() - (jellyseerr_last_scrape{job=\"$job\", alias=\"$seerr\"} or overseerr_last_scrape{job=\"$job\", alias=\"$seerr\"})",
+          "fullMetaSearch": false,
+          "includeNullMetadata": true,
+          "legendFormat": "__auto",
+          "range": true,
+          "refId": "A",
+          "useBackend": false
+        }
+      ],
+      "title": "Last Scrape",
+      "type": "stat"
+    },
+    {
+      "datasource": {
+        "type": "prometheus",
+        "uid": "victoriametrics"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "color": {
+            "mode": "thresholds"
+          },
+          "displayName": "${__field.labels.status}:",
+          "mappings": [],
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": null
+              }
+            ]
+          },
+          "unit": "Issues"
+        },
+        "overrides": [
+          {
+            "matcher": {
+              "id": "byValue",
+              "options": {
+                "op": "lte",
+                "reducer": "lastNotNull",
+                "value": 1
+              }
+            },
+            "properties": [
+              {
+                "id": "unit",
+                "value": "Issue"
+              }
+            ]
+          }
+        ]
+      },
+      "gridPos": {
+        "h": 4,
+        "w": 6,
+        "x": 11,
+        "y": 1
+      },
+      "id": 62,
+      "options": {
+        "colorMode": "value",
+        "graphMode": "none",
+        "justifyMode": "auto",
+        "orientation": "auto",
+        "percentChangeColorMode": "standard",
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "",
+          "values": false
+        },
+        "showPercentChange": false,
+        "textMode": "auto",
+        "wideLayout": true
+      },
+      "pluginVersion": "11.5.1",
+      "targets": [
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "victoriametrics"
+          },
+          "editorMode": "code",
+          "expr": "jellyseerr_issue_status{job=\"$job\", alias=\"$seerr\"} or overseerr_issue_status{job=\"$job\", alias=\"$seerr\"}",
+          "hide": false,
+          "instant": false,
+          "legendFormat": "__auto",
+          "range": true,
+          "refId": "A"
+        }
+      ],
+      "title": "Issue Status",
+      "type": "stat"
+    },
+    {
+      "datasource": {
+        "type": "prometheus",
+        "uid": "victoriametrics"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "color": {
+            "mode": "thresholds"
+          },
+          "mappings": [],
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": null
+              }
+            ]
+          },
+          "unit": "Issues"
+        },
+        "overrides": [
+          {
+            "matcher": {
+              "id": "byValue",
+              "options": {
+                "op": "lte",
+                "reducer": "lastNotNull",
+                "value": 1
+              }
+            },
+            "properties": [
+              {
+                "id": "unit",
+                "value": "Issue"
+              }
+            ]
+          }
+        ]
+      },
+      "gridPos": {
+        "h": 4,
+        "w": 7,
+        "x": 17,
+        "y": 1
+      },
+      "id": 66,
+      "options": {
+        "colorMode": "value",
+        "graphMode": "none",
+        "justifyMode": "auto",
+        "orientation": "auto",
+        "percentChangeColorMode": "standard",
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "",
+          "values": false
+        },
+        "showPercentChange": false,
+        "textMode": "auto",
+        "wideLayout": true
+      },
+      "pluginVersion": "11.5.1",
+      "targets": [
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "victoriametrics"
+          },
+          "editorMode": "code",
+          "expr": "jellyseerr_issue_total{job=\"$job\", alias=\"$seerr\"} or overseerr_issue_total{job=\"$job\", alias=\"$seerr\"}",
+          "hide": false,
+          "instant": false,
+          "legendFormat": "__auto",
+          "range": true,
+          "refId": "A"
+        }
+      ],
+      "title": "Issue Count",
+      "type": "stat"
+    },
+    {
+      "datasource": {
+        "type": "prometheus",
+        "uid": "victoriametrics"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "color": {
+            "mode": "thresholds"
+          },
+          "displayName": "${__field.labels.status}:",
+          "mappings": [],
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": null
+              }
+            ]
+          },
+          "unit": "Requests"
+        },
+        "overrides": [
+          {
+            "matcher": {
+              "id": "byValue",
+              "options": {
+                "op": "lte",
+                "reducer": "lastNotNull",
+                "value": 1
+              }
+            },
+            "properties": [
+              {
+                "id": "unit",
+                "value": "Request"
+              }
+            ]
+          }
+        ]
+      },
+      "gridPos": {
+        "h": 4,
+        "w": 12,
+        "x": 0,
+        "y": 5
+      },
+      "id": 61,
+      "options": {
+        "colorMode": "value",
+        "graphMode": "none",
+        "justifyMode": "auto",
+        "orientation": "auto",
+        "percentChangeColorMode": "standard",
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "",
+          "values": false
+        },
+        "showPercentChange": false,
+        "textMode": "auto",
+        "wideLayout": true
+      },
+      "pluginVersion": "11.5.1",
+      "targets": [
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "victoriametrics"
+          },
+          "editorMode": "code",
+          "expr": "jellyseerr_request_status{job=\"$job\", alias=\"$seerr\"} or overseerr_request_status{job=\"$job\", alias=\"$seerr\"}",
+          "hide": false,
+          "instant": false,
+          "legendFormat": "__auto",
+          "range": true,
+          "refId": "A"
+        }
+      ],
+      "title": "Request Status",
+      "type": "stat"
+    },
+    {
+      "datasource": {
+        "type": "prometheus",
+        "uid": "victoriametrics"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "color": {
+            "mode": "thresholds"
+          },
+          "mappings": [],
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": null
+              }
+            ]
+          },
+          "unit": "Requests"
+        },
+        "overrides": [
+          {
+            "matcher": {
+              "id": "byValue",
+              "options": {
+                "op": "lte",
+                "reducer": "lastNotNull",
+                "value": 1
+              }
+            },
+            "properties": [
+              {
+                "id": "unit",
+                "value": "Request"
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byFrameRefID",
+              "options": "A"
+            },
+            "properties": [
+              {
+                "id": "displayName",
+                "value": "Total:"
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byFrameRefID",
+              "options": "B"
+            },
+            "properties": [
+              {
+                "id": "displayName",
+                "value": "Tv:"
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byFrameRefID",
+              "options": "C"
+            },
+            "properties": [
+              {
+                "id": "displayName",
+                "value": "Movie:"
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byFrameRefID",
+              "options": "D"
+            },
+            "properties": [
+              {
+                "id": "displayName",
+                "value": "Seasons Requested:"
+              },
+              {
+                "id": "unit",
+                "value": "Seasons"
+              }
+            ]
+          }
+        ]
+      },
+      "gridPos": {
+        "h": 4,
+        "w": 12,
+        "x": 12,
+        "y": 5
+      },
+      "id": 60,
+      "options": {
+        "colorMode": "value",
+        "graphMode": "none",
+        "justifyMode": "auto",
+        "orientation": "auto",
+        "percentChangeColorMode": "standard",
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "",
+          "values": false
+        },
+        "showPercentChange": false,
+        "textMode": "auto",
+        "wideLayout": true
+      },
+      "pluginVersion": "11.5.1",
+      "targets": [
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "victoriametrics"
+          },
+          "disableTextWrap": false,
+          "editorMode": "code",
+          "expr": "jellyseerr_request_total{job=\"$job\", alias=\"$seerr\"} or overseerr_request_total{job=\"$job\", alias=\"$seerr\"}",
+          "fullMetaSearch": false,
+          "includeNullMetadata": true,
+          "legendFormat": "__auto",
+          "range": true,
+          "refId": "A",
+          "useBackend": false
+        },
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "victoriametrics"
+          },
+          "editorMode": "code",
+          "expr": "jellyseerr_request_tv{job=\"$job\", alias=\"$seerr\"} or overseerr_request_tv{job=\"$job\", alias=\"$seerr\"}",
+          "hide": false,
+          "instant": false,
+          "legendFormat": "__auto",
+          "range": true,
+          "refId": "B"
+        },
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "victoriametrics"
+          },
+          "editorMode": "code",
+          "expr": "jellyseerr_request_movie{job=\"$job\", alias=\"$seerr\"} or overseerr_request_movie{job=\"$job\", alias=\"$seerr\"}",
+          "hide": false,
+          "instant": false,
+          "legendFormat": "__auto",
+          "range": true,
+          "refId": "C"
+        },
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "victoriametrics"
+          },
+          "editorMode": "code",
+          "expr": "jellyseerr_request_seasons_total{job=\"$job\", alias=\"$seerr\"} or overseerr_request_seasons_total{job=\"$job\", alias=\"$seerr\"}",
+          "hide": false,
+          "instant": false,
+          "legendFormat": "__auto",
+          "range": true,
+          "refId": "D"
+        }
+      ],
+      "title": "Request Count",
+      "type": "stat"
+    },
+    {
+      "datasource": {
+        "type": "prometheus",
+        "uid": "victoriametrics"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "color": {
+            "mode": "thresholds"
+          },
+          "displayName": "${__field.labels.type}",
+          "mappings": [],
+          "noValue": "0",
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": null
+              }
+            ]
+          },
+          "unit": "Issues"
+        },
+        "overrides": [
+          {
+            "matcher": {
+              "id": "byValue",
+              "options": {
+                "op": "lte",
+                "reducer": "lastNotNull",
+                "value": 1
+              }
+            },
+            "properties": [
+              {
+                "id": "unit",
+                "value": "Issue"
+              }
+            ]
+          }
+        ]
+      },
+      "gridPos": {
+        "h": 7,
+        "w": 7,
+        "x": 0,
+        "y": 9
+      },
+      "id": 63,
+      "options": {
+        "displayMode": "gradient",
+        "legend": {
+          "calcs": [],
+          "displayMode": "list",
+          "placement": "bottom",
+          "showLegend": false
+        },
+        "maxVizHeight": 300,
+        "minVizHeight": 16,
+        "minVizWidth": 8,
+        "namePlacement": "auto",
+        "orientation": "horizontal",
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "",
+          "values": false
+        },
+        "showUnfilled": true,
+        "sizing": "auto",
+        "text": {},
+        "valueMode": "color"
+      },
+      "pluginVersion": "11.5.1",
+      "targets": [
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "victoriametrics"
+          },
+          "disableTextWrap": false,
+          "editorMode": "code",
+          "expr": "jellyseerr_issue_type{job=~\"$job\", alias=\"${seerr}\"} or overseerr_issue_type{job=~\"$job\", alias=\"${seerr}\"}",
+          "fullMetaSearch": false,
+          "includeNullMetadata": true,
+          "legendFormat": "__auto",
+          "range": true,
+          "refId": "A",
+          "useBackend": false
+        }
+      ],
+      "title": "Issue Type",
+      "type": "bargauge"
+    },
+    {
+      "datasource": {
+        "type": "prometheus",
+        "uid": "victoriametrics"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "color": {
+            "mode": "thresholds"
+          },
+          "displayName": "${__field.labels.media_type}",
+          "mappings": [],
+          "noValue": "0",
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": null
+              }
+            ]
+          },
+          "unit": "Issues"
+        },
+        "overrides": [
+          {
+            "matcher": {
+              "id": "byValue",
+              "options": {
+                "op": "lte",
+                "reducer": "lastNotNull",
+                "value": 1
+              }
+            },
+            "properties": [
+              {
+                "id": "unit",
+                "value": "Issue"
+              }
+            ]
+          }
+        ]
+      },
+      "gridPos": {
+        "h": 7,
+        "w": 7,
+        "x": 7,
+        "y": 9
+      },
+      "id": 64,
+      "options": {
+        "displayMode": "gradient",
+        "legend": {
+          "calcs": [],
+          "displayMode": "list",
+          "placement": "bottom",
+          "showLegend": false
+        },
+        "maxVizHeight": 300,
+        "minVizHeight": 16,
+        "minVizWidth": 8,
+        "namePlacement": "auto",
+        "orientation": "horizontal",
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "",
+          "values": false
+        },
+        "showUnfilled": true,
+        "sizing": "auto",
+        "text": {},
+        "valueMode": "color"
+      },
+      "pluginVersion": "11.5.1",
+      "targets": [
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "victoriametrics"
+          },
+          "disableTextWrap": false,
+          "editorMode": "code",
+          "expr": "jellyseerr_issue_media_type{job=~\"$job\", alias=\"${seerr}\"} or overseerr_issue_media_type{job=~\"$job\", alias=\"${seerr}\"}",
+          "fullMetaSearch": false,
+          "includeNullMetadata": true,
+          "legendFormat": "__auto",
+          "range": true,
+          "refId": "A",
+          "useBackend": false
+        }
+      ],
+      "title": "Issue Media Type",
+      "type": "bargauge"
+    },
+    {
+      "datasource": {
+        "type": "prometheus",
+        "uid": "victoriametrics"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "color": {
+            "mode": "thresholds"
+          },
+          "displayName": "${__field.labels.media_type}/${__field.labels.issue_type}",
+          "mappings": [],
+          "noValue": "0",
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": null
+              }
+            ]
+          },
+          "unit": "Issues"
+        },
+        "overrides": [
+          {
+            "matcher": {
+              "id": "byValue",
+              "options": {
+                "op": "lte",
+                "reducer": "lastNotNull",
+                "value": 1
+              }
+            },
+            "properties": [
+              {
+                "id": "unit",
+                "value": "Issue"
+              }
+            ]
+          }
+        ]
+      },
+      "gridPos": {
+        "h": 7,
+        "w": 10,
+        "x": 14,
+        "y": 9
+      },
+      "id": 65,
+      "options": {
+        "displayMode": "gradient",
+        "legend": {
+          "calcs": [],
+          "displayMode": "list",
+          "placement": "bottom",
+          "showLegend": false
+        },
+        "maxVizHeight": 300,
+        "minVizHeight": 16,
+        "minVizWidth": 8,
+        "namePlacement": "auto",
+        "orientation": "horizontal",
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "",
+          "values": false
+        },
+        "showUnfilled": true,
+        "sizing": "auto",
+        "text": {},
+        "valueMode": "color"
+      },
+      "pluginVersion": "11.5.1",
+      "targets": [
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "victoriametrics"
+          },
+          "disableTextWrap": false,
+          "editorMode": "code",
+          "expr": "jellyseerr_issue_and_media_type{job=~\"$job\", alias=\"${seerr}\"} or overseerr_issue_and_media_type{job=~\"$job\", alias=\"${seerr}\"}",
+          "fullMetaSearch": false,
+          "includeNullMetadata": true,
+          "legendFormat": "__auto",
+          "range": true,
+          "refId": "A",
+          "useBackend": false
+        }
+      ],
+      "title": "Issue Media Type",
+      "type": "bargauge"
+    },
+    {
+      "collapsed": false,
+      "gridPos": {
+        "h": 1,
+        "w": 24,
+        "x": 0,
+        "y": 16
+      },
       "id": 22,
       "panels": [],
       "repeat": "prowlarr",
@@ -92,7 +1087,7 @@
         "h": 4,
         "w": 5,
         "x": 0,
-        "y": 1
+        "y": 17
       },
       "id": 23,
       "options": {
@@ -161,7 +1156,7 @@
         "h": 4,
         "w": 6,
         "x": 5,
-        "y": 1
+        "y": 17
       },
       "id": 24,
       "options": {
@@ -239,7 +1234,7 @@
         "h": 4,
         "w": 7,
         "x": 11,
-        "y": 1
+        "y": 17
       },
       "id": 38,
       "options": {
@@ -308,7 +1303,7 @@
         "h": 4,
         "w": 6,
         "x": 18,
-        "y": 1
+        "y": 17
       },
       "id": 39,
       "options": {
@@ -376,7 +1371,7 @@
         "h": 4,
         "w": 8,
         "x": 0,
-        "y": 5
+        "y": 21
       },
       "id": 28,
       "options": {
@@ -448,7 +1443,7 @@
         "h": 4,
         "w": 8,
         "x": 8,
-        "y": 5
+        "y": 21
       },
       "id": 29,
       "options": {
@@ -520,7 +1515,7 @@
         "h": 4,
         "w": 8,
         "x": 16,
-        "y": 5
+        "y": 21
       },
       "id": 30,
       "options": {
@@ -593,7 +1588,7 @@
         "h": 4,
         "w": 6,
         "x": 0,
-        "y": 9
+        "y": 25
       },
       "id": 31,
       "options": {
@@ -670,7 +1665,7 @@
         "h": 4,
         "w": 6,
         "x": 6,
-        "y": 9
+        "y": 25
       },
       "id": 32,
       "options": {
@@ -749,7 +1744,7 @@
         "h": 4,
         "w": 6,
         "x": 12,
-        "y": 9
+        "y": 25
       },
       "id": 33,
       "options": {
@@ -829,7 +1824,7 @@
         "h": 4,
         "w": 6,
         "x": 18,
-        "y": 9
+        "y": 25
       },
       "id": 34,
       "options": {
@@ -878,7 +1873,7 @@
         "h": 1,
         "w": 24,
         "x": 0,
-        "y": 13
+        "y": 29
       },
       "id": 11,
       "panels": [],
@@ -944,7 +1939,7 @@
         "h": 4,
         "w": 5,
         "x": 0,
-        "y": 14
+        "y": 30
       },
       "id": 12,
       "options": {
@@ -1013,7 +2008,7 @@
         "h": 4,
         "w": 3,
         "x": 5,
-        "y": 14
+        "y": 30
       },
       "id": 3,
       "options": {
@@ -1091,7 +2086,7 @@
         "h": 4,
         "w": 2,
         "x": 8,
-        "y": 14
+        "y": 30
       },
       "id": 10,
       "options": {
@@ -1160,7 +2155,7 @@
         "h": 4,
         "w": 2,
         "x": 10,
-        "y": 14
+        "y": 30
       },
       "id": 4,
       "options": {
@@ -1246,7 +2241,7 @@
         "h": 4,
         "w": 4,
         "x": 12,
-        "y": 14
+        "y": 30
       },
       "id": 21,
       "options": {
@@ -1334,7 +2329,7 @@
         "h": 4,
         "w": 8,
         "x": 16,
-        "y": 14
+        "y": 30
       },
       "id": 5,
       "options": {
@@ -1466,7 +2461,7 @@
         "h": 4,
         "w": 12,
         "x": 0,
-        "y": 18
+        "y": 34
       },
       "id": 7,
       "options": {
@@ -1552,7 +2547,7 @@
         "h": 4,
         "w": 12,
         "x": 12,
-        "y": 18
+        "y": 34
       },
       "id": 6,
       "options": {
@@ -1640,7 +2635,7 @@
         "h": 10,
         "w": 12,
         "x": 0,
-        "y": 22
+        "y": 38
       },
       "id": 8,
       "options": {
@@ -1736,7 +2731,7 @@
         "h": 10,
         "w": 12,
         "x": 12,
-        "y": 22
+        "y": 38
       },
       "id": 9,
       "options": {
@@ -1791,7 +2786,7 @@
         "h": 1,
         "w": 24,
         "x": 0,
-        "y": 32
+        "y": 48
       },
       "id": 1,
       "panels": [],
@@ -1857,7 +2852,7 @@
         "h": 4,
         "w": 5,
         "x": 0,
-        "y": 33
+        "y": 49
       },
       "id": 2,
       "options": {
@@ -1926,7 +2921,7 @@
         "h": 4,
         "w": 3,
         "x": 5,
-        "y": 33
+        "y": 49
       },
       "id": 13,
       "options": {
@@ -2004,7 +2999,7 @@
         "h": 4,
         "w": 3,
         "x": 8,
-        "y": 33
+        "y": 49
       },
       "id": 14,
       "options": {
@@ -2073,7 +3068,7 @@
         "h": 4,
         "w": 5,
         "x": 11,
-        "y": 33
+        "y": 49
       },
       "id": 27,
       "options": {
@@ -2159,7 +3154,7 @@
         "h": 4,
         "w": 8,
         "x": 16,
-        "y": 33
+        "y": 49
       },
       "id": 16,
       "options": {
@@ -2293,7 +3288,7 @@
         "h": 4,
         "w": 12,
         "x": 0,
-        "y": 37
+        "y": 53
       },
       "id": 17,
       "options": {
@@ -2378,7 +3373,7 @@
         "h": 4,
         "w": 12,
         "x": 12,
-        "y": 37
+        "y": 53
       },
       "id": 18,
       "options": {
@@ -2466,7 +3461,7 @@
         "h": 10,
         "w": 12,
         "x": 0,
-        "y": 41
+        "y": 57
       },
       "id": 19,
       "options": {
@@ -2562,7 +3557,7 @@
         "h": 10,
         "w": 12,
         "x": 12,
-        "y": 41
+        "y": 57
       },
       "id": 20,
       "options": {
@@ -2702,6 +3697,23 @@
         "refresh": 2,
         "regex": "",
         "type": "query"
+      },
+      {
+        "allowCustomValue": false,
+        "current": {},
+        "definition": "label_values(scraparr_services_up{scraparr_services=\"seerr\"},alias)",
+        "hide": 2,
+        "includeAll": true,
+        "name": "seerr",
+        "options": [],
+        "query": {
+          "qryType": 1,
+          "query": "label_values(scraparr_services_up{scraparr_services=\"seerr\"},alias)",
+          "refId": "PrometheusVariableQueryEditor-VariableQuery"
+        },
+        "refresh": 2,
+        "regex": "",
+        "type": "query"
       }
     ]
   },
@@ -2715,5 +3727,5 @@
   "uid": "scraparr",
   "version": 23,
   "weekStart": "",
-  "description": "Sonarr, Radarr and Prowlarr via scraparr in the media stack. Upstream dashboard 22934, trimmed to the arrs this server runs and rebound to the provisioned VictoriaMetrics uid."
+  "description": "Sonarr, Radarr, Prowlarr and Seerr via scraparr in the media stack. Upstream dashboard 22934, trimmed to the services this server runs and rebound to the provisioned VictoriaMetrics uid."
 }

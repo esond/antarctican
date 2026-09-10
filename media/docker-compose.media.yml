@@ -233,6 +233,7 @@ services:
       - sonarr-uhd
       - radarr-uhd
       - prowlarr
+      - seerr
     environment:
       - TZ=${TZ}
       - SONARR_URL=http://sonarr-uhd:8989
@@ -241,6 +242,13 @@ services:
       - RADARR_API_KEY=${RADARR_UHD_API_KEY}
       - PROWLARR_URL=http://prowlarr:9696
       - PROWLARR_API_KEY=${PROWLARR_API_KEY}
+      # Seerr under the OVERSEERR_ prefix: scraparr has no `seerr` connector,
+      # and Seerr is the renamed Overseerr with the same /api/v1. The alias is
+      # set explicitly because scraparr's seerr connector indexes config['alias']
+      # directly and raises without it, unlike the arr connectors.
+      - OVERSEERR_URL=http://seerr:5055
+      - OVERSEERR_API_KEY=${SEERR_API_KEY}
+      - OVERSEERR_ALIAS=seerr
     ports:
       - ${SCRAPARR_METRICS_HOST_PORT}:7100
     restart: unless-stopped

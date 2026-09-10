@@ -65,7 +65,7 @@ to Tempo over OTLP/gRPC and logs to Loki's native OTLP endpoint, both on `otel-n
 | cloudflared (`claw/`) | metrics | native `/metrics` via `--metrics 0.0.0.0:20241` |
 | CouchDB (`notes/`) | metrics | native `/_node/_local/_prometheus` on the normal port, admin basic auth |
 | qBittorrent (`media/`) | metrics | `qbittorrent-exporter` sidecar, WebUI credentials |
-| Sonarr / Radarr / Prowlarr (`media/`) | metrics | `scraparr` sidecar, one endpoint for all three, per-app API keys |
+| Sonarr / Radarr / Prowlarr / Seerr (`media/`) | metrics | `scraparr` sidecar, one endpoint for all four, per-app API keys |
 | Pi-hole (`pihole/`) | metrics | `pihole-exporter` sidecar (v6 session API), admin password |
 | UrBackup (`urbackup/`) | metrics | `urbackup-exporter` sidecar, admin login |
 
@@ -79,7 +79,7 @@ exporter start, stop and redeploy together, and this stack only ever sees a host
 | Exporter | Stack | Reaches the service via | Credential |
 |---|---|---|---|
 | `qbittorrent-exporter` | `media` | `qbittorrentvpn` on `media-net` | `QBITTORRENT_WEBUI_USER` / `_PASSWORD` |
-| `scraparr` | `media` | `sonarr-uhd`, `radarr-uhd`, `prowlarr` on `media-net` | each app's API key |
+| `scraparr` | `media` | `sonarr-uhd`, `radarr-uhd`, `prowlarr`, `seerr` on `media-net` | each app's API key |
 | `pihole-exporter` | `pihole` | `pihole` on `pihole-net`, container port 80 | `PIHOLE_FTLCONF_webserver_api_password` |
 | `urbackup-exporter` | `urbackup` | `host.docker.internal:55414` | `URBACKUP_SERVER_USERNAME` / `_PASSWORD` |
 
@@ -196,11 +196,9 @@ Two things to expect on first look:
   collector's remote-write naming as a genuinely idle service — check the metric exists in
   vmui before rewriting the query.
 - **The scraparr dashboard is trimmed, unlike the others.** Upstream 22934 covers every
-  arr scraparr supports and puts Seerr, Readarr and Bazarr — none of which run here — in
-  the first three rows, so the top two screens were permanently "No data" and the arrs
-  that do run sat below the fold. Those rows, their panels and their template variables
-  are dropped; Prowlarr, Sonarr and Radarr remain. Re-adding an app means re-importing
-  22934 and re-trimming rather than diffing against the copy here.
+  service scraparr supports; the Readarr and Bazarr rows, their panels and their template
+  variables are dropped here, leaving Seerr, Prowlarr, Sonarr and Radarr. Re-adding a
+  service means re-importing 22934 and re-trimming rather than diffing against this copy.
 
 - **OpenClaw** (`openclaw.json`): community dashboard
   [25068](https://grafana.com/grafana/dashboards/25068-openclaw-diagnostics-otel/) with
