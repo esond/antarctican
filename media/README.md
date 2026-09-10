@@ -165,9 +165,11 @@ README](../otel/README.md#exporter-sidecars). Three things specific to this stac
 - **Seerr is configured under scraparr's `OVERSEERR_` prefix.** scraparr has no `seerr`
   connector — its `ACTIVE_CONNECTORS` list covers `overseerr` and `jellyseerr` — and Seerr
   is the renamed Overseerr with the same `/api/v1`, so the Overseerr connector reads it
-  fine. Its metrics come out as `overseerr_*` with `scraparr_services="seerr"`, which is
-  what the dashboard's Seerr row already expects. `OVERSEERR_ALIAS` is set explicitly
-  because that connector indexes `config['alias']` directly and raises without it.
+  fine. Its metrics come out as `overseerr_*` labelled `scraparr_services="overseerr"` —
+  the connector name, not the app's — which is why the dashboard's Seerr row matches that
+  label with a regex rather than upstream's literal `"seerr"`. `OVERSEERR_ALIAS=seerr` is
+  set explicitly for two reasons: that connector indexes `config['alias']` directly and
+  raises without it, and it's what labels the series with the name you actually use.
 
 The qBittorrent exporter makes the VPN stall directly visible: `qbittorrent_firewalled`
 goes to 1 on exactly the condition the healthcheck trips on, so the dashboard shows the

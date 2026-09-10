@@ -121,7 +121,7 @@
           },
           "disableTextWrap": false,
           "editorMode": "builder",
-          "expr": "scraparr_services_up{job=\"$job\", scraparr_services=\"seerr\", alias=\"$seerr\"}",
+          "expr": "scraparr_services_up{job=\"$job\", scraparr_services=~\"(jelly|over)?seerr\", alias=\"$seerr\"}",
           "fullMetaSearch": false,
           "includeNullMetadata": true,
           "legendFormat": "__auto",
@@ -3701,14 +3701,14 @@
       {
         "allowCustomValue": false,
         "current": {},
-        "definition": "label_values(scraparr_services_up{scraparr_services=\"seerr\"},alias)",
+        "definition": "label_values(scraparr_services_up{scraparr_services=~\"(jelly|over)?seerr\"},alias)",
         "hide": 2,
         "includeAll": true,
         "name": "seerr",
         "options": [],
         "query": {
           "qryType": 1,
-          "query": "label_values(scraparr_services_up{scraparr_services=\"seerr\"},alias)",
+          "query": "label_values(scraparr_services_up{scraparr_services=~\"(jelly|over)?seerr\"},alias)",
           "refId": "PrometheusVariableQueryEditor-VariableQuery"
         },
         "refresh": 2,

@@ -195,10 +195,13 @@ Two things to expect on first look:
   committed. A panel reading "No data" is as likely to be a name that shifted through the
   collector's remote-write naming as a genuinely idle service — check the metric exists in
   vmui before rewriting the query.
-- **The scraparr dashboard is trimmed, unlike the others.** Upstream 22934 covers every
-  service scraparr supports; the Readarr and Bazarr rows, their panels and their template
-  variables are dropped here, leaving Seerr, Prowlarr, Sonarr and Radarr. Re-adding a
-  service means re-importing 22934 and re-trimming rather than diffing against this copy.
+- **The scraparr dashboard is trimmed and patched, unlike the others.** Upstream 22934
+  covers every service scraparr supports; the Readarr and Bazarr rows, their panels and
+  their template variables are dropped here, leaving Seerr, Prowlarr, Sonarr and Radarr.
+  Its Seerr row also filters on `scraparr_services="seerr"`, a value scraparr never emits
+  — the label carries the *connector* name (`overseerr` or `jellyseerr`), so those three
+  queries match it with a regex instead. Re-adding a service means re-importing 22934 and
+  redoing both changes rather than diffing against this copy.
 
 - **OpenClaw** (`openclaw.json`): community dashboard
   [25068](https://grafana.com/grafana/dashboards/25068-openclaw-diagnostics-otel/) with
