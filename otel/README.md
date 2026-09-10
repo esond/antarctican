@@ -195,9 +195,12 @@ Two things to expect on first look:
   committed. A panel reading "No data" is as likely to be a name that shifted through the
   collector's remote-write naming as a genuinely idle service — check the metric exists in
   vmui before rewriting the query.
-- **The scraparr dashboard covers arrs this server doesn't run** (Bazarr, Readarr,
-  Lidarr, Jellyseerr/Overseerr). Those rows stay empty and their template variables show
-  "None". It was imported whole rather than trimmed, so it stays diffable against upstream.
+- **The scraparr dashboard is trimmed, unlike the others.** Upstream 22934 covers every
+  arr scraparr supports and puts Seerr, Readarr and Bazarr — none of which run here — in
+  the first three rows, so the top two screens were permanently "No data" and the arrs
+  that do run sat below the fold. Those rows, their panels and their template variables
+  are dropped; Prowlarr, Sonarr and Radarr remain. Re-adding an app means re-importing
+  22934 and re-trimming rather than diffing against the copy here.
 
 - **OpenClaw** (`openclaw.json`): community dashboard
   [25068](https://grafana.com/grafana/dashboards/25068-openclaw-diagnostics-otel/) with
