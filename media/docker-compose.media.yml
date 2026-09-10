@@ -108,8 +108,12 @@ services:
       - PUID=${PUID}
       - PGID=${PGID}
       - TZ=${TZ}
+      # Prometheus /metrics, scraped by the otel stack's collector.
+      - PROMETHEUS_ENABLED=true
+      - PROMETHEUS_PORT=8192
     ports:
       - ${FLARESOLVERR_HOST_PORT}:8191
+      - ${FLARESOLVERR_METRICS_HOST_PORT}:8192
     restart: unless-stopped
     networks:
       - media-net
@@ -275,9 +279,13 @@ services:
       - UN_SONARR_0_API_KEY=${UNPACKERR_SONARR_UHD_API_KEY}
       - UN_RADARR_0_URL=${UNPACKERR_RADARR_UHD_URL}
       - UN_RADARR_0_API_KEY=${UNPACKERR_RADARR_UHD_API_KEY}
+      # Prometheus /metrics on 5656, scraped by the otel stack's collector.
+      - UN_WEBSERVER_METRICS=true
     volumes:
       - ${APPDATA}/unpackerr:/config
       - ${DATA}/torrents:/data/torrents
+    ports:
+      - ${UNPACKERR_METRICS_HOST_PORT}:5656
     restart: unless-stopped
     networks:
       - media-net

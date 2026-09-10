@@ -1,0 +1,36 @@
+# Tempo single-node config (Tempo 3.x). Lives at ${APPDATA}/tempo/tempo.yaml
+# on the host (copied from the repo, see README).
+
+server:
+  http_listen_port: 3200
+
+distributor:
+  receivers:
+    otlp:
+      protocols:
+        grpc:
+          # Tempo defaults this to localhost; the collector connects over otel-net.
+          endpoint: 0.0.0.0:4317
+
+storage:
+  trace:
+    backend: local
+    wal:
+      path: /var/tempo/wal
+    local:
+      path: /var/tempo/blocks
+
+# Trace retention. Tempo 3 split the old compactor into a scheduler (plans
+# compaction + retention jobs) and a worker (runs them); both carry the setting.
+backend_scheduler:
+  provider:
+    compaction:
+      compaction:
+        block_retention: 168h
+
+backend_worker:
+  compaction:
+    block_retention: 168h
+
+usage_report:
+  reporting_enabled: false

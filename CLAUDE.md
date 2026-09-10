@@ -13,7 +13,7 @@ Each top-level directory is one independently-deployable stack:
 - `docker-compose.<stack>.yml` — the compose file for that stack (filename includes the stack name, not the default `docker-compose.yml`)
 - `.env.example` — template; the real `.env` lives next to it on the Unraid host and is gitignored
 
-Stacks present: `media/` (arrs + qbittorrentvpn + swag + seerr + notifiarr + unpackerr), `plex/` (plex + tautulli + tunarr), `pihole/`, `notes/` (couchdb), `urbackup/`, `utils/` (krusader). `shared/` is intentionally empty (a placeholder mount point on the host). `user-scripts/` is **not** compose — it holds scripts for the User Scripts plugin.
+Stacks present: `media/` (arrs + qbittorrentvpn + swag + seerr + notifiarr + unpackerr), `plex/` (plex + tautulli + tunarr), `pihole/`, `notes/` (couchdb), `otel/` (otel-collector + victoriametrics + tempo + loki + grafana), `urbackup/`, `utils/` (krusader). `shared/` is intentionally empty (a placeholder mount point on the host). `user-scripts/` is **not** compose — it holds scripts for the User Scripts plugin.
 
 When adding a new stack, follow the same shape: new dir, `docker-compose.<name>.yml`, matching `.env.example`.
 
@@ -35,6 +35,7 @@ When adding a new stack, follow the same shape: new dir, `docker-compose.<name>.
 - **healarr + dockersocket** (in `media/`) self-heal the ProtonVPN NAT-PMP port-forward stall (binhex #265/#298), where the forwarded port goes dead and qBittorrent reports `connection_status: firewalled` (incoming P2P dies while downloads keep working). qbittorrentvpn has a `healthcheck` that curls its own WebUI on localhost and goes **unhealthy** on `firewalled`; `healarr` watches that health status and `docker restart`s the container to force a fresh VPN reconnect. healarr reaches the Docker API only through `dockersocket` (a `docker-socket-proxy` scoped to container read + POST) — nothing in the stack gets the raw socket. The healthcheck is credential-free because binhex qBittorrent bypasses auth for localhost.
 - **Notifiarr** mounts `/var/run/utmp` and `/etc/machine-id` from the host — required for its hardware/host fingerprinting; don't drop those mounts.
 - **Tunarr** uses `tmpfs` for `/transcode` (RAM transcoding) and passes `/dev/dri` for Intel QuickSync. Plex transcodes to `/tmp/plex` on the host.
+- **otel** (in `otel/`) is the telemetry sink for every other stack. The collector is the only intake: OpenClaw pushes OTLP to its published port, and services that only expose Prometheus `/metrics` (unpackerr, flaresolverr, cloudflared, couchdb) are scraped through `host.docker.internal` on their **published host ports**, never by joining another stack's network — that keeps stacks independently startable. When you enable a metrics endpoint in another stack, publish it with a `${SERVICE_METRICS_HOST_PORT}` var there, and add the matching port var to `otel/.env.example` plus a scrape job in `otel/otel-collector/config.yaml`. The collector, Tempo, Loki and Grafana configs under `otel/` are tracked here and copied into `${APPDATA}` on the host (see `otel/README.md`), same pattern as the SWAG dashboard conf.
 
 ## user-scripts/
 

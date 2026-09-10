@@ -1,0 +1,43 @@
+# Loki single-binary config. Lives at ${APPDATA}/loki/loki.yaml on the host
+# (copied from the repo, see README). Filesystem storage, TSDB index, native
+# OTLP ingest on /otlp.
+
+auth_enabled: false
+
+server:
+  http_listen_port: 3100
+
+common:
+  path_prefix: /loki
+  replication_factor: 1
+  storage:
+    filesystem:
+      chunks_directory: /loki/chunks
+      rules_directory: /loki/rules
+  ring:
+    kvstore:
+      store: inmemory
+
+schema_config:
+  configs:
+    - from: "2024-01-01"
+      store: tsdb
+      object_store: filesystem
+      schema: v13
+      index:
+        prefix: index_
+        period: 24h
+
+limits_config:
+  # Log retention. Enforced by the compactor below.
+  retention_period: 168h
+  # Required for OTLP ingest: resource/scope attributes land as structured metadata.
+  allow_structured_metadata: true
+
+compactor:
+  working_directory: /loki/compactor
+  retention_enabled: true
+  delete_request_store: filesystem
+
+analytics:
+  reporting_enabled: false

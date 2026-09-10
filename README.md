@@ -13,6 +13,7 @@ Each top-level directory is one independently-deployable stack via the Unraid Do
 | [`plex/`](plex/) | Plex, Tautulli, Tunarr |
 | [`pihole/`](pihole/) | Pi-hole DNS |
 | [`notes/`](notes/) | Obsidian LiveSync setup (CouchDB) |
+| [`otel/`](otel/) | Observability: OpenTelemetry Collector, VictoriaMetrics, Tempo, Loki, Grafana |
 | [`urbackup/`](urbackup/) | UrBackup server |
 | [`utils/`](utils/) | Krusader |
 | [`user-scripts/`](user-scripts/) | Shell/Python scripts for the User Scripts plugin (not compose) |
