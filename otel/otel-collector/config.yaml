@@ -59,7 +59,7 @@ receivers:
         - job_name: qbittorrent
           static_configs:
             - targets: ["host.docker.internal:${env:QBITTORRENT_METRICS_PORT}"]
-        # Sonarr, Radarr and Prowlarr, all three behind one scraparr endpoint.
+        # Sonarr, Radarr, Prowlarr and Seerr, all four behind one scraparr endpoint.
         - job_name: scraparr
           static_configs:
             - targets: ["host.docker.internal:${env:SCRAPARR_METRICS_PORT}"]
