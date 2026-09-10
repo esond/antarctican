@@ -3701,6 +3701,10 @@
       {
         "allowCustomValue": false,
         "current": {},
+        "datasource": {
+          "type": "prometheus",
+          "uid": "victoriametrics"
+        },
         "definition": "label_values(scraparr_services_up{scraparr_services=~\"(jelly|over)?seerr\"},alias)",
         "hide": 2,
         "includeAll": true,
