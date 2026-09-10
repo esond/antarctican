@@ -142,6 +142,7 @@ raw `docker.sock`. End to end a stall self-heals in roughly two minutes.
 
 Four services in this stack are scraped by the [otel stack](../otel/), each on a published
 host port — that stack never joins `media-net`, so nothing here depends on it running.
+Notifiarr also serves a `/metrics` endpoint, but it isn't scraped.
 
 | Service | Endpoint | Port var |
 |---|---|---|
@@ -149,7 +150,6 @@ host port — that stack never joins `media-net`, so nothing here depends on it 
 | `flaresolverr` | native `/metrics` (`PROMETHEUS_ENABLED=true`) | `FLARESOLVERR_METRICS_HOST_PORT` |
 | `qbittorrent-exporter` | qBittorrent's WebUI API | `QBITTORRENT_METRICS_HOST_PORT` |
 | `scraparr` | Sonarr, Radarr and Prowlarr APIs, one endpoint | `SCRAPARR_METRICS_HOST_PORT` |
-| `notifiarr` | native `/metrics` on its **UI** port | `NOTIFIARR_HOST_PORT` |
 
 Credentials and the scrape-side setup are documented in the [otel
 README](../otel/README.md#exporter-sidecars). Two things specific to this stack:

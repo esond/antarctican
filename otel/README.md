@@ -66,14 +66,12 @@ to Tempo over OTLP/gRPC and logs to Loki's native OTLP endpoint, both on `otel-n
 | CouchDB (`notes/`) | metrics | native `/_node/_local/_prometheus` on the normal port, admin basic auth |
 | qBittorrent (`media/`) | metrics | `qbittorrent-exporter` sidecar, WebUI credentials |
 | Sonarr / Radarr / Prowlarr (`media/`) | metrics | `scraparr` sidecar, one endpoint for all three, per-app API keys |
-| Notifiarr (`media/`) | metrics | native `/metrics` on its UI port, `X-Api-Key` Extra Key |
-| Tautulli (`plex/`) | metrics | `tautulli-exporter` sidecar, Tautulli API key |
 | Pi-hole (`pihole/`) | metrics | `pihole-exporter` sidecar (v6 session API), admin password |
 | UrBackup (`urbackup/`) | metrics | `urbackup-exporter` sidecar, admin login |
 
 ## Exporter sidecars
 
-Six of the sources above have no native Prometheus endpoint and get an exporter instead.
+Four of the sources above have no native Prometheus endpoint and get an exporter instead.
 Each one follows the same rule: the exporter lives in the stack that owns the service, on
 that stack's network, with the credentials in that stack's `.env` — so the service and its
 exporter start, stop and redeploy together, and this stack only ever sees a host port.
@@ -82,11 +80,10 @@ exporter start, stop and redeploy together, and this stack only ever sees a host
 |---|---|---|---|
 | `qbittorrent-exporter` | `media` | `qbittorrentvpn` on `media-net` | `QBITTORRENT_WEBUI_USER` / `_PASSWORD` |
 | `scraparr` | `media` | `sonarr-uhd`, `radarr-uhd`, `prowlarr` on `media-net` | each app's API key |
-| `tautulli-exporter` | `plex` | `tautulli` on the stack's default network | `TAUTULLI_API_KEY` |
 | `pihole-exporter` | `pihole` | `pihole` on `pihole-net`, container port 80 | `PIHOLE_FTLCONF_webserver_api_password` |
 | `urbackup-exporter` | `urbackup` | `host.docker.internal:55414` | `URBACKUP_SERVER_USERNAME` / `_PASSWORD` |
 
-Three of these need explaining:
+Two of these need explaining:
 
 - **qBittorrent's exporter needs real credentials**, unlike the container's own
   healthcheck — binhex bypasses auth for localhost only, and the exporter is a separate
@@ -98,16 +95,15 @@ Three of these need explaining:
 - **UrBackup's exporter is the one bridge exception.** The server is `network_mode: host`
   for client discovery, but the exporter stays on a bridge with `extra_hosts:
   host-gateway` so its metrics port remains a one-line `.env` change like every other.
-- **Notifiarr has no exporter at all** — it serves `/metrics` on its normal UI port. The
-  key guarding it is an "Extra Key" added on Notifiarr's own Configuration page and sent
-  as an `X-Api-Key` header by the scrape job, so it lives in `otel/.env` rather than
-  `media/.env`; Notifiarr reads it from its config, not the environment.
 
-Not instrumented, and not planned: Plex directly (every exporter is dead — Tautulli covers
-playback instead), Seerr (the Overseerr exporter is untested against it), Tunarr (nothing
-exists), Ollama (upstream `/metrics` PR unmerged), SWAG (manual `stub_status` surgery for
-connection counts only), and Unraid's temperatures, array and parity state (invisible to
-`hostmetrics`, and reaching them means a bespoke Unraid GraphQL scraper).
+Not instrumented, and not planned: the whole `plex/` stack — Plex directly (every exporter
+is dead), Tautulli (an exporter exists but the playback numbers aren't worth a container
+and an API key here), and Tunarr (nothing exists) — plus Notifiarr (serves `/metrics`
+natively behind an "Extra Key", but its own UI already covers what it reports), Seerr (the
+Overseerr exporter is untested against it), Ollama (upstream `/metrics` PR unmerged), SWAG
+(manual `stub_status` surgery for connection counts only), and Unraid's temperatures, array
+and parity state (invisible to `hostmetrics`, and reaching them means a bespoke Unraid
+GraphQL scraper).
 
 ## Deploying
 
@@ -134,9 +130,9 @@ connection counts only), and Unraid's temperatures, array and parity state (invi
 3. Copy `.env.example` to `.env` and fill it in. The scrape-target ports and the CouchDB
    credentials must match the values in the other stacks' `.env` files.
 
-4. Redeploy every stack that publishes a metrics port — `media`, `claw`, `plex`, `pihole`
-   and `urbackup` — so the new ports and env vars take effect, then start this stack from
-   the Compose Manager plugin. Each of those stacks needs its own new `.env` values first
+4. Redeploy every stack that publishes a metrics port — `media`, `claw`, `pihole` and
+   `urbackup` — so the new ports and env vars take effect, then start this stack from the
+   Compose Manager plugin. Each of those stacks needs its own new `.env` values first
    (API keys and metrics ports); see its `.env.example`.
 
 5. Enable OpenClaw's exporter (claw README, Telemetry).
@@ -167,7 +163,7 @@ connection counts only), and Unraid's temperatures, array and parity state (invi
 
   ```sh
   curl -s localhost:${QBITTORRENT_METRICS_PORT}/metrics | head
-  curl -s -H "X-Api-Key: ${NOTIFIARR_EXTRA_KEY}" localhost:${NOTIFIARR_PORT}/metrics | head
+  curl -s localhost:${SCRAPARR_METRICS_PORT}/metrics | head
   ```
 
 - Grafana: `http://<unraid-ip>:${GRAFANA_HOST_PORT}`, log in with the admin values from
@@ -183,15 +179,12 @@ its JSON back into the repo. Ad-hoc dashboards imported in the UI still persist 
 `${APPDATA}/grafana/data`.
 
 Each stack that feeds this one has a dashboard, tagged with the stack name so Grafana's
-dashboard list groups them. Five are upstream dashboards imported and rebound; the sixth
-had no upstream to import.
+dashboard list groups them. All four are upstream dashboards imported and rebound.
 
 | Dashboard | File | Tags | Source |
 |---|---|---|---|
 | qBittorrent | `qbittorrent.json` | `media` | exporter repo's `grafana/dashboard.json` |
 | Arrs (scraparr) | `scraparr.json` | `media` | [22934](https://grafana.com/grafana/dashboards/22934) |
-| Notifiarr | `notifiarr.json` | `media` | [24776](https://grafana.com/grafana/dashboards/24776) |
-| Plex (Tautulli) | `tautulli.json` | `plex` | hand-written |
 | Pi-hole | `pihole.json` | `pihole` | [21043](https://grafana.com/grafana/dashboards/21043) |
 | UrBackup | `urbackup.json` | `urbackup` | exporter repo's `grafana/grafana_dashboard.json` |
 
@@ -256,10 +249,7 @@ Two things to expect on first look:
 - [Unpackerr — web server / metrics](https://unpackerr.zip/docs/install/configuration/)
 - [cloudflared — tunnel metrics](https://developers.cloudflare.com/cloudflare-one/networks/connectors/cloudflare-tunnel/monitor-tunnels/metrics/)
 - [CouchDB — Prometheus endpoint](https://docs.couchdb.org/en/stable/config/misc.html)
-- [Prometheus — `http_headers` in a scrape config](https://prometheus.io/docs/prometheus/latest/configuration/configuration/#scrape_config)
 - [prometheus-qbittorrent-exporter](https://github.com/esanchezm/prometheus-qbittorrent-exporter)
 - [scraparr](https://github.com/thecfu/scraparr) — env vars in its `sample.env`
-- [Notifiarr — Extra Keys / metrics](https://notifiarr.wiki/pages/client/afterInstall/)
-- [tautulli-exporter](https://github.com/mm503/tautulli-exporter)
 - [pihole6-exporter](https://github.com/Mosher-Labs/pihole6-exporter)
 - [urbackup-exporter](https://github.com/ngosang/urbackup-exporter)

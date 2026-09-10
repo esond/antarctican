@@ -63,17 +63,6 @@ receivers:
         - job_name: scraparr
           static_configs:
             - targets: ["host.docker.internal:${env:SCRAPARR_METRICS_PORT}"]
-        # Notifiarr serves /metrics on its normal UI port, gated by an "Extra
-        # Key" set in its web UI and sent as X-Api-Key.
-        - job_name: notifiarr
-          http_headers:
-            X-Api-Key:
-              secrets: ["${env:NOTIFIARR_EXTRA_KEY}"]
-          static_configs:
-            - targets: ["host.docker.internal:${env:NOTIFIARR_PORT}"]
-        - job_name: tautulli
-          static_configs:
-            - targets: ["host.docker.internal:${env:TAUTULLI_METRICS_PORT}"]
         - job_name: pihole
           static_configs:
             - targets: ["host.docker.internal:${env:PIHOLE_METRICS_PORT}"]

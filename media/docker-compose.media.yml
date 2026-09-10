@@ -249,9 +249,6 @@ services:
     labels:
       net.unraid.docker.shell: "sh"
 
-  # Serves Prometheus /metrics on its normal UI port, so there is no separate
-  # metrics port here. The otel collector scrapes it with an X-Api-Key header;
-  # that key is an "Extra Key" set in Notifiarr's own web UI, not an env var.
   notifiarr:
     image: golift/notifiarr:latest
     container_name: notifiarr
