@@ -188,13 +188,12 @@ rewrite every datasource reference to the concrete provisioned uid (`victoriamet
 `tempo`, `loki`). Annotation queries pointing at the built-in `-- Grafana --` datasource
 are correct as they are; leave them.
 
-Two things to expect on first look:
+Two things worth knowing:
 
-- **The panel queries are unverified.** They were written against each exporter's
-  documented metric names, and nothing had scraped these targets yet when they were
-  committed. A panel reading "No data" is as likely to be a name that shifted through the
-  collector's remote-write naming as a genuinely idle service — check the metric exists in
-  vmui before rewriting the query.
+- **A panel reading "No data" is worth checking before rewriting.** Every panel here has
+  been seen carrying real data, so the usual cause is an idle service rather than a broken
+  query — but a metric name can also shift on its way through the collector's remote-write
+  naming. Confirm the metric exists in vmui first.
 - **The scraparr dashboard is trimmed and patched, unlike the others.** Upstream 22934
   covers every service scraparr supports; the Readarr and Bazarr rows, their panels and
   their template variables are dropped here, leaving Seerr, Prowlarr, Sonarr and Radarr.
