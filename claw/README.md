@@ -292,6 +292,49 @@ multi-user heuristic, which drops to a note once the guild has a `users` restric
 headers, tool filters — is edited in the Config tab under `mcp.servers.<name>`. See
 [Fastmail](#fastmail-agent-email) for the one server this stack uses.
 
+### Telemetry
+
+The gateway exports traces, metrics and logs over OTLP to the collector in the
+[`otel/`](../otel/) stack: per-model token usage and cost, model-call latency and
+time-to-first-byte, tool execution timing, run attempts and session turns as metrics, and
+each run as a trace of GenAI-semconv model-call spans plus gateway RPC spans.
+
+Two steps. First enable `diagnostics-otel` under **Settings → Plugins → Installed** (the
+image ships it; no `plugins.allow` entry is needed and, per [Plugins](#plugins), none
+should be added). The plugin has no page of its own; its settings are the
+`diagnostics.otel` block in the Config tab, added through the raw JSON editor if the form
+does not offer a Diagnostics section:
+
+```json5
+{ enabled: true, endpoint: "http://host.docker.internal:4318", protocol: "http/protobuf",
+  serviceName: "openclaw", traces: true, metrics: true, logs: true, sampleRate: 1,
+  captureContent: true }
+```
+
+`host.docker.internal` resolves to the host through the `extra_hosts` entry in the compose
+file; the port is `OTEL_COLLECTOR_HOST_PORT` in `otel/.env`. Only `http/protobuf` is
+supported. The block hot-reloads (`config hot reload applied (diagnostics.otel)` in the
+gateway log), no restart needed.
+
+`captureContent` is on deliberately. Without it every log record's body is the literal
+string `log`, with the real information only in structured attributes, and model-call
+spans carry no prompt or completion text. With it, Loki gets readable log lines and Tempo
+gets prompts, completions and tool input/output as span attributes. The flag is
+all-or-nothing, and neither store has auth of its own, so this rests on the LAN being
+trusted; unset it if that stops being true.
+
+Confirm in Grafana after a Discord message or two: Explore → Tempo → Search lists
+`openclaw.gateway.rpc.*` and run traces, Explore → Loki `{service_name="openclaw"}` shows
+the log lines. Expect many Loki trace links to land on "trace not found": the gateway
+stamps a trace ID on every HTTP request, websocket frame and session-lifecycle event, but
+the plugin only exports spans for RPC calls, model calls, tool executions and completed
+runs. Lines from a run link once the run finishes; lines from dashboard polling never
+will. Known upstream bug ([openclaw#45096](https://github.com/openclaw/openclaw/issues/45096)):
+the plugin has been seen exporting metrics but no spans at all; if Tempo search stays
+empty while metrics arrive, that is the bug, not the config. A separate
+`diagnostics-prometheus` plugin exposes a pull endpoint with gateway-level counters
+instead; it is independent of this one and not wired up.
+
 ## Codex harness
 
 OpenAI models on a ChatGPT subscription do not run on OpenClaw's embedded runtime. With
@@ -689,6 +732,8 @@ token with **Send email**, registered as its own MCP server so the gate can targ
 - [OpenClaw docs — onboarding reference](https://docs.openclaw.ai/reference/wizard)
 - [OpenClaw docs — browser tool](https://docs.openclaw.ai/tools/browser)
 - [OpenClaw docs — MCP](https://docs.openclaw.ai/tools/mcp)
+- [OpenClaw docs — OpenTelemetry setup](https://docs.openclaw.ai/gateway/opentelemetry/setup)
+- [OpenClaw docs — OpenTelemetry configuration](https://docs.openclaw.ai/gateway/opentelemetry/configuration)
 - [Fastmail — an MCP server for Fastmail](https://www.fastmail.com/blog/an-mcp-server-for-fastmail/)
 - [Fastmail — API tokens](https://www.fastmail.help/hc/en-us/articles/5254602856719-API-tokens)
 - [Fastmail — connecting AI tools via the MCP server](https://www.fastmail.help/hc/en-us/articles/15869557281295-Connecting-AI-tools-via-Fastmail-s-MCP-server)

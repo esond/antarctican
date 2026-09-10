@@ -12,7 +12,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        stack: [claw, media, notes, pihole, plex, urbackup, utils]
+        stack: [claw, media, notes, otel, pihole, plex, urbackup, utils]
     steps:
       - uses: actions/checkout@v4
 

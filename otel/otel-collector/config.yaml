@@ -1,0 +1,95 @@
+# OpenTelemetry Collector config. Lives at ${APPDATA}/otel-collector/config.yaml
+# on the host (copied from the repo, see README). ${env:...} values come from
+# the otel-collector service environment in docker-compose.otel.yml.
+
+receivers:
+  # Push intake. OpenClaw's diagnostics-otel plugin sends traces, metrics and
+  # logs here over OTLP/HTTP (protobuf). gRPC is not enabled: nothing speaks it.
+  otlp:
+    protocols:
+      http:
+        endpoint: 0.0.0.0:4318
+
+  # Unraid host metrics, read from the host root bind-mounted at /hostfs.
+  # No `process` scraper: it needs root and produces one series per PID.
+  hostmetrics:
+    root_path: /hostfs
+    collection_interval: 30s
+    scrapers:
+      cpu:
+      load:
+      memory:
+      paging:
+      network:
+      disk:
+      filesystem:
+        exclude_fs_types:
+          fs_types: [tmpfs, devtmpfs, overlay, squashfs, proc, sysfs, cgroup, cgroup2, fuse.gvfsd-fuse, autofs, ramfs, rootfs]
+          match_type: strict
+        exclude_mount_points:
+          mount_points: ["/var/lib/docker/.*", "/run/.*", "/sys/.*", "/proc/.*", "/dev/.*"]
+          match_type: regexp
+
+  # Per-container CPU / memory / network / block IO, via the scoped socket proxy.
+  docker_stats:
+    endpoint: tcp://dockersocket-otel:2375
+    collection_interval: 30s
+
+  # Services that only expose a Prometheus endpoint. All live in other stacks
+  # and are reached on their published host ports through host.docker.internal.
+  prometheus:
+    config:
+      scrape_configs:
+        - job_name: unpackerr
+          static_configs:
+            - targets: ["host.docker.internal:${env:UNPACKERR_METRICS_PORT}"]
+        - job_name: flaresolverr
+          static_configs:
+            - targets: ["host.docker.internal:${env:FLARESOLVERR_METRICS_PORT}"]
+        - job_name: cloudflared
+          static_configs:
+            - targets: ["host.docker.internal:${env:CLOUDFLARED_METRICS_PORT}"]
+        - job_name: couchdb
+          metrics_path: /_node/_local/_prometheus
+          basic_auth:
+            username: ${env:COUCHDB_USER}
+            password: ${env:COUCHDB_PASSWORD}
+          static_configs:
+            - targets: ["host.docker.internal:${env:COUCHDB_PORT}"]
+
+processors:
+  memory_limiter:
+    check_interval: 5s
+    limit_mib: 512
+  batch:
+
+exporters:
+  # Metrics -> VictoriaMetrics over Prometheus remote-write. Resource
+  # attributes (container.name, host.name, ...) become labels.
+  prometheusremotewrite:
+    endpoint: http://victoriametrics:8428/api/v1/write
+    resource_to_telemetry_conversion:
+      enabled: true
+  # Traces -> Tempo, OTLP/gRPC on otel-net.
+  otlp/tempo:
+    endpoint: tempo:4317
+    tls:
+      insecure: true
+  # Logs -> Loki's native OTLP endpoint.
+  otlphttp/loki:
+    endpoint: http://loki:3100/otlp
+
+service:
+  pipelines:
+    metrics:
+      receivers: [otlp, hostmetrics, docker_stats, prometheus]
+      processors: [memory_limiter, batch]
+      exporters: [prometheusremotewrite]
+    traces:
+      receivers: [otlp]
+      processors: [memory_limiter, batch]
+      exporters: [otlp/tempo]
+    logs:
+      receivers: [otlp]
+      processors: [memory_limiter, batch]
+      exporters: [otlphttp/loki]
