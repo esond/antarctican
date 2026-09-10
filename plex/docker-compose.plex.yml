@@ -38,6 +38,27 @@ services:
       net.unraid.docker.icon: "https://raw.githubusercontent.com/linuxserver/docker-templates/master/linuxserver.io/img/tautulli-icon.png"
       net.unraid.docker.shell: "sh"
 
+  # Prometheus /metrics for Plex playback (stream counts, transcode sessions,
+  # bandwidth), read out of Tautulli's API and scraped by the otel stack's
+  # collector. Tautulli rather than Plex directly: the Plex exporters are all
+  # unmaintained. `plex` is network_mode: host, but tautulli isn't, so this
+  # reaches it by service name on the stack's default network.
+  tautulli-exporter:
+    image: ghcr.io/mm503/tautulli-exporter:latest
+    container_name: tautulli-exporter
+    depends_on:
+      - tautulli
+    environment:
+      - TZ=${TZ}
+      - TAUTULLI_URL=http://tautulli:8181
+      - TAUTULLI_API_KEY=${TAUTULLI_API_KEY}
+      - METRICS_PORT=8000
+    ports:
+      - ${TAUTULLI_METRICS_HOST_PORT}:8000
+    restart: unless-stopped
+    labels:
+      net.unraid.docker.shell: "sh"
+
   tunarr:
     image: ghcr.io/chrisbenincasa/tunarr:latest
     container_name: tunarr

@@ -19,6 +19,8 @@ requests. Deployed from `docker-compose.media.yml` via the Docker Compose Manage
 | `swag` | lscr.io/linuxserver/swag | Reverse proxy + TLS (`${SWAG_URL}` wildcard) | `81` (dashboard) |
 | `dockersocket` | tecnativa/docker-socket-proxy | Scoped Docker API for healarr | — |
 | `healarr` | binhex/arch-healarr | Restarts qbittorrentvpn when its VPN port stalls | — |
+| `qbittorrent-exporter` | ghcr.io/esanchezm/prometheus-qbittorrent-exporter | Prometheus metrics for qBittorrent | — |
+| `scraparr` | ghcr.io/thecfu/scraparr | Prometheus metrics for Sonarr, Radarr and Prowlarr | — |
 
 The arrs and `unpackerr` `depends_on` `qbittorrentvpn` and reach it over the `media-net`
 bridge. SWAG fronts the other UIs and owns 80/443/81 on the host.
@@ -135,6 +137,41 @@ status and `docker restart`s the container to force a fresh VPN reconnect + port
 negotiation. healarr reaches the Docker API only through `dockersocket`, a
 `docker-socket-proxy` scoped to container read + POST, so nothing in the stack touches the
 raw `docker.sock`. End to end a stall self-heals in roughly two minutes.
+
+## Metrics
+
+Four services in this stack are scraped by the [otel stack](../otel/), each on a published
+host port — that stack never joins `media-net`, so nothing here depends on it running.
+
+| Service | Endpoint | Port var |
+|---|---|---|
+| `unpackerr` | native `/metrics` (`UN_WEBSERVER_METRICS=true`) | `UNPACKERR_METRICS_HOST_PORT` |
+| `flaresolverr` | native `/metrics` (`PROMETHEUS_ENABLED=true`) | `FLARESOLVERR_METRICS_HOST_PORT` |
+| `qbittorrent-exporter` | qBittorrent's WebUI API | `QBITTORRENT_METRICS_HOST_PORT` |
+| `scraparr` | Sonarr, Radarr and Prowlarr APIs, one endpoint | `SCRAPARR_METRICS_HOST_PORT` |
+| `notifiarr` | native `/metrics` on its **UI** port | `NOTIFIARR_HOST_PORT` |
+
+Three things worth knowing before touching these:
+
+- **`qbittorrent-exporter` needs WebUI credentials** (`QBITTORRENT_WEBUI_USER` /
+  `QBITTORRENT_WEBUI_PASSWORD`), even though the container's healthcheck doesn't. The
+  healthcheck runs *inside* the container and binhex bypasses auth for localhost; the
+  exporter is a separate host on `media-net` and gets no such pass. It is also on
+  `media-net` rather than sharing `qbittorrentvpn`'s network namespace on purpose — see
+  below.
+- **`scraparr` reuses the arrs' API keys.** `SONARR_UHD_API_KEY`, `RADARR_UHD_API_KEY` and
+  `PROWLARR_API_KEY` are each app's own key from Settings → General — the same values the
+  `UNPACKERR_*_API_KEY` vars already hold, kept as separate vars so each consumer's config
+  reads on its own.
+- **Notifiarr's `/metrics` is gated by an "Extra Key"**, a 20–30 character string added on
+  its Configuration page. It isn't an env var, so it lives in `otel/.env` as
+  `NOTIFIARR_EXTRA_KEY`, which the collector sends as an `X-Api-Key` header.
+
+The qBittorrent exporter makes the VPN stall directly visible: `qbittorrent_firewalled`
+goes to 1 on exactly the condition the healthcheck trips on, so the dashboard shows the
+stall itself rather than only healarr's restart after the fact. That is also why the
+exporter must not share `qbittorrentvpn`'s network namespace — it would go down with every
+restart it is there to record.
 
 ## Notes
 
