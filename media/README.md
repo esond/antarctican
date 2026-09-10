@@ -151,27 +151,22 @@ host port — that stack never joins `media-net`, so nothing here depends on it 
 | `scraparr` | Sonarr, Radarr and Prowlarr APIs, one endpoint | `SCRAPARR_METRICS_HOST_PORT` |
 | `notifiarr` | native `/metrics` on its **UI** port | `NOTIFIARR_HOST_PORT` |
 
-Three things worth knowing before touching these:
+Credentials and the scrape-side setup are documented in the [otel
+README](../otel/README.md#exporter-sidecars). Two things specific to this stack:
 
 - **`qbittorrent-exporter` needs WebUI credentials** (`QBITTORRENT_WEBUI_USER` /
   `QBITTORRENT_WEBUI_PASSWORD`), even though the container's healthcheck doesn't. The
   healthcheck runs *inside* the container and binhex bypasses auth for localhost; the
-  exporter is a separate host on `media-net` and gets no such pass. It is also on
-  `media-net` rather than sharing `qbittorrentvpn`'s network namespace on purpose — see
-  below.
-- **`scraparr` reuses the arrs' API keys.** `SONARR_UHD_API_KEY`, `RADARR_UHD_API_KEY` and
-  `PROWLARR_API_KEY` are each app's own key from Settings → General — the same values the
-  `UNPACKERR_*_API_KEY` vars already hold, kept as separate vars so each consumer's config
-  reads on its own.
-- **Notifiarr's `/metrics` is gated by an "Extra Key"**, a 20–30 character string added on
-  its Configuration page. It isn't an env var, so it lives in `otel/.env` as
-  `NOTIFIARR_EXTRA_KEY`, which the collector sends as an `X-Api-Key` header.
+  exporter is a separate host on `media-net` and gets no such pass.
+- **`scraparr` reuses the arrs' API keys** — `SONARR_UHD_API_KEY`, `RADARR_UHD_API_KEY`
+  and `PROWLARR_API_KEY` hold the same values as the `UNPACKERR_*_API_KEY` vars, kept
+  separate so each consumer's config reads on its own.
 
 The qBittorrent exporter makes the VPN stall directly visible: `qbittorrent_firewalled`
 goes to 1 on exactly the condition the healthcheck trips on, so the dashboard shows the
 stall itself rather than only healarr's restart after the fact. That is also why the
-exporter must not share `qbittorrentvpn`'s network namespace — it would go down with every
-restart it is there to record.
+exporter sits on `media-net` instead of sharing `qbittorrentvpn`'s network namespace — it
+would go down with every restart it is there to record.
 
 ## Notes
 

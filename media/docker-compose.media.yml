@@ -219,10 +219,13 @@ services:
 
   # One Prometheus /metrics endpoint covering all three arrs (queue, health,
   # indexer and download-client stats), scraped by the otel stack's collector.
-  # Configured entirely by env; the alternative config.yaml would be another
-  # tracked file to copy into appdata, which this stack doesn't otherwise need.
-  # It reaches the arrs by service name on media-net, so the API keys are the
-  # same ones unpackerr uses.
+  # Configured entirely by env: with no /scraparr/config/config.yaml present it
+  # falls back to <APP>_URL / <APP>_API_KEY, which avoids another tracked file to
+  # copy into appdata. Apps left unset are skipped, and a container with nothing
+  # configured exits rather than serving an empty /metrics.
+  #
+  # 7100 is fixed here -- in env mode scraparr ignores the GENERAL_* settings and
+  # uses its built-in default, so remap the host side only.
   scraparr:
     image: ghcr.io/thecfu/scraparr:latest
     container_name: scraparr
