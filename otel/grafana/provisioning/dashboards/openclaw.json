@@ -397,8 +397,8 @@
       },
       "targets": [
         {
-          "expr": "sum(rate(openclaw_cost_usd_total[5m])) by (model)",
-          "legendFormat": "{{model}}",
+          "expr": "sum(rate(openclaw_cost_usd_total[5m])) by (openclaw_model)",
+          "legendFormat": "{{openclaw_model}}",
           "datasource": {
             "type": "prometheus",
             "uid": "victoriametrics"
@@ -554,8 +554,8 @@
           }
         },
         {
-          "expr": "sum(rate(openclaw_message_processed_total[1m])) by (outcome)",
-          "legendFormat": "{{outcome}}",
+          "expr": "sum(rate(openclaw_message_processed_total[1m])) by (openclaw_outcome)",
+          "legendFormat": "{{openclaw_outcome}}",
           "datasource": {
             "type": "prometheus",
             "uid": "victoriametrics"
@@ -698,16 +698,16 @@
       },
       "targets": [
         {
-          "expr": "sum(rate(openclaw_queue_lane_enqueue_total[1m])) by (lane)",
-          "legendFormat": "enqueue {{lane}}",
+          "expr": "sum(rate(openclaw_queue_lane_enqueue_total[1m])) by (openclaw_lane)",
+          "legendFormat": "enqueue {{openclaw_lane}}",
           "datasource": {
             "type": "prometheus",
             "uid": "victoriametrics"
           }
         },
         {
-          "expr": "sum(rate(openclaw_queue_lane_dequeue_total[1m])) by (lane)",
-          "legendFormat": "dequeue {{lane}}",
+          "expr": "sum(rate(openclaw_queue_lane_dequeue_total[1m])) by (openclaw_lane)",
+          "legendFormat": "dequeue {{openclaw_lane}}",
           "datasource": {
             "type": "prometheus",
             "uid": "victoriametrics"
@@ -871,8 +871,8 @@
       },
       "targets": [
         {
-          "expr": "sum(rate(openclaw_run_attempt_total[5m])) by (attempt)",
-          "legendFormat": "attempt {{attempt}}",
+          "expr": "sum(rate(openclaw_run_attempt_total[5m])) by (openclaw_attempt)",
+          "legendFormat": "attempt {{openclaw_attempt}}",
           "datasource": {
             "type": "prometheus",
             "uid": "victoriametrics"
@@ -916,7 +916,7 @@
     },
     {
       "id": 18,
-      "title": "Session States",
+      "title": "Session State Transitions",
       "type": "timeseries",
       "gridPos": {
         "x": 0,
@@ -926,8 +926,8 @@
       },
       "targets": [
         {
-          "expr": "sum(openclaw_session_state_total) by (state)",
-          "legendFormat": "{{state}}",
+          "expr": "sum(rate(openclaw_session_state_total[$__rate_interval])) by (openclaw_reason)",
+          "legendFormat": "{{openclaw_reason}}",
           "datasource": {
             "type": "prometheus",
             "uid": "victoriametrics"
@@ -968,8 +968,8 @@
       },
       "targets": [
         {
-          "expr": "sum(openclaw_session_stuck_total) by (state)",
-          "legendFormat": "{{state}}",
+          "expr": "sum(rate(openclaw_session_stuck_total[$__rate_interval])) by (openclaw_state)",
+          "legendFormat": "{{openclaw_state}}",
           "datasource": {
             "type": "prometheus",
             "uid": "victoriametrics"
@@ -1067,16 +1067,16 @@
       },
       "targets": [
         {
-          "expr": "sum(rate(openclaw_webhook_received_total[1m])) by (channel)",
-          "legendFormat": "received {{channel}}",
+          "expr": "sum(rate(openclaw_webhook_received_total[1m])) by (openclaw_channel)",
+          "legendFormat": "received {{openclaw_channel}}",
           "datasource": {
             "type": "prometheus",
             "uid": "victoriametrics"
           }
         },
         {
-          "expr": "sum(rate(openclaw_webhook_error_total[1m])) by (channel)",
-          "legendFormat": "error {{channel}}",
+          "expr": "sum(rate(openclaw_webhook_error_total[1m])) by (openclaw_channel)",
+          "legendFormat": "error {{openclaw_channel}}",
           "datasource": {
             "type": "prometheus",
             "uid": "victoriametrics"

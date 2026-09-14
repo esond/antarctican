@@ -190,10 +190,12 @@ are correct as they are; leave them.
 
 Two things worth knowing:
 
-- **A panel reading "No data" is worth checking before rewriting.** Every panel here has
+- **A panel reading "No data" is worth checking before rewriting.** Most panels here have
   been seen carrying real data, so the usual cause is an idle service rather than a broken
   query — but a metric name can also shift on its way through the collector's remote-write
-  naming. Confirm the metric exists in vmui first.
+  naming, and an upstream dashboard can group by a label the exporter never emits, which
+  fails silently rather than showing "No data". Confirm in vmui that the metric exists
+  *and* that the labels the query groups by are the ones it actually carries.
 - **The scraparr dashboard is trimmed and patched, unlike the others.** Upstream 22934
   covers every service scraparr supports; the Readarr and Bazarr rows, their panels and
   their template variables are dropped here, leaving Seerr, Prowlarr, Sonarr and Radarr.
@@ -210,7 +212,22 @@ Two things worth knowing:
   TraceQL metrics (`{resource.service.name="openclaw"} | rate() by (name)`), which Tempo 3
   serves without extra config. Metric names follow the collector's remote-write naming
   (`openclaw_*_total`, `openclaw_*_ms_milliseconds_bucket`), which is what upstream's
-  queries already use.
+  queries already use. Two classes of upstream bug are fixed here and will come back on
+  any re-import: upstream groups by bare attribute names (`by (state)`, `by (lane)`,
+  `by (outcome)`, `by (channel)`, `by (model)`, `by (attempt)`) where OpenClaw's
+  attributes arrive prefixed (`openclaw_state`, ...), which silently collapses every
+  series into one unlabelled line; and the two session panels plotted counters raw
+  instead of through `rate()`, so they climbed forever. `openclaw_session_state_total`
+  counts state *transitions*, not live sessions — there is no sessions-in-state gauge to
+  chart, so panel 18 is a transition rate broken out by `openclaw_reason`.
+- **Panels that are correctly empty on this host.** Five instruments in the
+  [metrics reference](https://docs.openclaw.ai/gateway/opentelemetry/model-calls-and-metrics)
+  are real but have never fired here, so their panels show No Data — this is not a
+  broken query: `openclaw.cost.usd` (estimate only, absent when model pricing is
+  unknown, and the Codex subscription runtime reports none), `openclaw.webhook.received`
+  / `.error` / `.duration_ms` (Discord arrives over the gateway socket, not a webhook),
+  `openclaw.session.stuck` / `.stuck_age_ms` (nothing has got stuck), and
+  `openclaw.run.attempt`.
 - Host: any `hostmetrics`-receiver dashboard; the metric names are OpenTelemetry's
   (`system_*`), not node_exporter's (`node_*`), so node_exporter dashboards will not work.
 - Containers: `container_*` metrics from the `docker_stats` receiver, labelled by
