@@ -4,7 +4,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Repository purpose
 
-Configuration repo for an Unraid home server named `antarctican`. Contains Docker Compose stacks (deployed via the Unraid **Docker Compose Manager** plugin) and shell/Python scripts (deployed via the Unraid **User Scripts** plugin). There is no build system, no tests, no CI — edits land on the Unraid host by being copied/pulled there and then started from the corresponding plugin UI.
+Configuration repo for an Unraid home server named `antarctican`. Contains Docker Compose stacks (deployed via the Unraid **Docker Compose Manager** plugin) and shell/Python scripts (deployed via the Unraid **User Scripts** plugin). There is no build system and no tests. CI is one GitHub Actions workflow (`.github/workflows/validate-compose.yml`) that copies each stack's `.env.example` to `.env` and runs `docker compose config -q` against its compose file, on PRs and pushes to `main`; the stack list is a hardcoded matrix, so a new stack goes unvalidated until it is added there. Edits land on the Unraid host by being copied/pulled there and then started from the corresponding plugin UI.
 
 ## Layout convention
 
