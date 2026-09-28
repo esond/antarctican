@@ -63,6 +63,7 @@ to Tempo over OTLP/gRPC and logs to Loki's native OTLP endpoint, both on `otel-n
 | Unpackerr (`media/`) | metrics | native `/metrics`, `UN_WEBSERVER_METRICS=true` |
 | FlareSolverr (`media/`) | metrics | native `/metrics`, `PROMETHEUS_ENABLED=true` |
 | cloudflared (`claw/`) | metrics | native `/metrics` via `--metrics 0.0.0.0:20241` |
+| cloudflared (`media/`) | metrics | native `/metrics`, same flag, job `cloudflared-media` |
 | CouchDB (`notes/`) | metrics | native `/_node/_local/_prometheus` on the normal port, admin basic auth |
 | qBittorrent (`media/`) | metrics | `qbittorrent-exporter` sidecar, WebUI credentials |
 | Sonarr / Radarr / Prowlarr / Seerr (`media/`) | metrics | `scraparr` sidecar, one endpoint for all four, per-app API keys |

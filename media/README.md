@@ -1,8 +1,8 @@
 # media stack
 
 The main media-management stack: the *arr* apps plus qBittorrent (behind a VPN) for
-acquiring content, SWAG terminating TLS for everything on the `${SWAG_URL}` domain, and Seerr for
-requests. Deployed from `docker-compose.media.yml` via the Docker Compose Manager plugin.
+acquiring content, SWAG terminating TLS on the `${SWAG_URL}` domain, and Seerr for requests,
+published through a Cloudflare Tunnel. Deployed from `docker-compose.media.yml` via the Docker Compose Manager plugin.
 
 ## Services
 
@@ -16,6 +16,7 @@ requests. Deployed from `docker-compose.media.yml` via the Docker Compose Manage
 | `unpackerr` | golift/unpackerr | Extracts completed archives for the arrs | — |
 | `notifiarr` | golift/notifiarr | Notifications / Discord integration | `${NOTIFIARR_HOST_PORT}` |
 | `seerr` | ghcr.io/seerr-team/seerr | Media request UI | `${SEERR_HOST_PORT}` |
+| `cloudflared` | cloudflare/cloudflared | Publishes Seerr at its public hostname via Cloudflare Tunnel | — |
 | `swag` | lscr.io/linuxserver/swag | Reverse proxy + TLS (`${SWAG_URL}` wildcard) | `81` (dashboard) |
 | `dockersocket` | tecnativa/docker-socket-proxy | Scoped Docker API for healarr | — |
 | `healarr` | binhex/arch-healarr | Restarts qbittorrentvpn when its VPN port stalls | — |
@@ -56,6 +57,42 @@ just confirms it parses. The mod installs its stock conf only when no
 `dashboard.subdomain.conf` exists, so the tracked copy survives restarts and mod
 updates — but when deploying fresh, make sure the `cp` **overwrites** the stock file
 the mod already dropped in appdata.
+
+## Public access to Seerr
+
+Seerr is the only service here meant for people outside the house. It reaches the internet
+through `cloudflared`, which makes an outbound-only connection to Cloudflare, not through
+SWAG and a router port forward. That puts Cloudflare's WAF in front of it, and with no
+forward there is no origin IP to go around it by. It also gives Seerr the real client IP,
+which the router's masquerading hides from anything behind the old 443 forward.
+
+1. In [Zero Trust](https://one.dash.cloudflare.com/) → Networks → Tunnels, create a tunnel
+   (a new one, not claw's), pick **Docker** as the connector, and copy the token into
+   `CLOUDFLARED_TUNNEL_TOKEN`.
+2. In the zone's DNS, delete the existing grey-cloud record for Seerr's hostname.
+   Cloudflare won't create the tunnel's CNAME while it's there.
+3. Add a public hostname for Seerr to the tunnel with service `http://seerr:5055`.
+4. In Seerr, Settings → General → turn on **Enable Proxy Support**, so it takes the client
+   IP from `X-Forwarded-For` instead of logging every request as `cloudflared-media`.
+5. Add a WAF custom rule (Security → WAF → Custom rules; the free plan allows five) with
+   expression `(http.host eq "seerr.example.com")` and action **Managed Challenge**. Real
+   browsers mostly pass it without a click, and the `cf_clearance` cookie then covers the
+   SPA's API calls until it expires. The SPA's `fetch` calls can't solve a challenge, so a
+   tab left open past the cookie's lifetime sees API errors until it's reloaded; raise
+   **Challenge Passage** (Security → Settings) from its 30-minute default to a day or more.
+   Don't use Bot Fight Mode instead: on the free plan it's zone-wide and
+   can't be scoped or skipped, so it would also challenge the OpenClaw mobile apps on the
+   claw hostname.
+6. Once the tunnel serves Seerr, delete the UniFi 443 → SWAG port forward. SWAG's cert
+   renewal is DNS-01 (`VALIDATION=dns`), so it needs no inbound traffic.
+
+The challenge blocks non-browser clients. The installed PWA is a browser and passes it,
+but third-party clients that call Seerr's API directly, such as nzb360, won't work through
+the tunnel. For a stronger gate, put a Cloudflare Access application on the
+hostname instead (free up to 50 users), at the cost of a second login before Plex's.
+
+If Pi-hole has a local DNS record for Seerr's hostname, LAN clients keep going through
+SWAG and skip the WAF. That's harmless, but keep SWAG's Seerr proxy conf in appdata while it does.
 
 ## qBittorrent — ProtonVPN over WireGuard
 
@@ -140,7 +177,7 @@ raw `docker.sock`. End to end a stall self-heals in roughly two minutes.
 
 ## Metrics
 
-Four services in this stack are scraped by the [otel stack](../otel/), each on a published
+Five services in this stack are scraped by the [otel stack](../otel/), each on a published
 host port — that stack never joins `media-net`, so nothing here depends on it running.
 Notifiarr also serves a `/metrics` endpoint, but it isn't scraped.
 
@@ -150,6 +187,7 @@ Notifiarr also serves a `/metrics` endpoint, but it isn't scraped.
 | `flaresolverr` | native `/metrics` (`PROMETHEUS_ENABLED=true`) | `FLARESOLVERR_METRICS_HOST_PORT` |
 | `qbittorrent-exporter` | qBittorrent's WebUI API | `QBITTORRENT_METRICS_HOST_PORT` |
 | `scraparr` | Sonarr, Radarr, Prowlarr and Seerr APIs, one endpoint | `SCRAPARR_METRICS_HOST_PORT` |
+| `cloudflared` | native `/metrics` (`--metrics`) | `CLOUDFLARED_METRICS_HOST_PORT` |
 
 Credentials and the scrape-side setup are documented in the [otel
 README](../otel/README.md#exporter-sidecars). Three things specific to this stack:
