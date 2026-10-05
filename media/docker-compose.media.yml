@@ -335,6 +335,30 @@ services:
       net.unraid.docker.icon: "https://raw.githubusercontent.com/sct/overseerr/refs/heads/develop/public/favicon-32x32.png"
       net.unraid.docker.shell: "sh"
 
+  # Outbound-only tunnel that publishes Seerr at its public hostname, so the
+  # router needs no 443 forward. Ingress (hostname -> http://seerr:5055) and the
+  # WAF rule in front of it are configured in the Cloudflare dashboard, not
+  # here -- see README "Public access to Seerr". Its own tunnel, separate from
+  # claw's, so each stack starts on its own.
+  cloudflared:
+    image: cloudflare/cloudflared:latest
+    container_name: cloudflared-media
+    # --metrics: Prometheus /metrics (tunnel, HA connection and QUIC stats),
+    # scraped by the otel stack's collector.
+    command: tunnel --no-autoupdate --metrics 0.0.0.0:20241 run
+    depends_on:
+      - seerr
+    environment:
+      - TZ=${TZ}
+      - TUNNEL_TOKEN=${CLOUDFLARED_TUNNEL_TOKEN}
+    ports:
+      - ${CLOUDFLARED_METRICS_HOST_PORT}:20241
+    restart: unless-stopped
+    networks:
+      - media-net
+    labels:
+      net.unraid.docker.icon: "https://avatars.githubusercontent.com/u/314135?s=200&v=4"
+
   unpackerr:
     image: golift/unpackerr:latest
     container_name: unpackerr

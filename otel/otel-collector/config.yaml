@@ -49,6 +49,9 @@ receivers:
         - job_name: cloudflared
           static_configs:
             - targets: ["host.docker.internal:${env:CLOUDFLARED_METRICS_PORT}"]
+        - job_name: cloudflared-media
+          static_configs:
+            - targets: ["host.docker.internal:${env:CLOUDFLARED_MEDIA_METRICS_PORT}"]
         - job_name: couchdb
           metrics_path: /_node/_local/_prometheus
           basic_auth:
