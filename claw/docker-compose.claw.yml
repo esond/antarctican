@@ -59,6 +59,12 @@ services:
       # file is missing, Docker creates a directory at this path and the
       # mount breaks.
       - ${APPDATA}/openclaw/bin/op:/usr/local/bin/op:ro
+      # Destination for the daily `openclaw backup create` archives (README
+      # "Backups"). A subdirectory of the backup share, not the share itself,
+      # and outside ~/.openclaw because backup create rejects an output inside
+      # the tree it backs up. Create it 1000:1000, mode 700, before starting:
+      # a missing dir is created root-owned and node can't write to it.
+      - ${BACKUP}/openclaw:/home/node/backups
     # Lets diagnostics.otel.endpoint reach the otel stack's collector on its
     # published host port (README "Telemetry").
     extra_hosts:
