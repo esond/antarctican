@@ -46,9 +46,13 @@ OpenClaw runs as its upstream fixed user (`node`, UID 1000) — it doesn't honor
    them):
 
    ```sh
-   mkdir -p /mnt/user/appdata/openclaw/config /mnt/user/appdata/openclaw/auth-secret
-   chown -R 1000:1000 /mnt/user/appdata/openclaw /mnt/user/claw
+   mkdir -p /mnt/user/appdata/openclaw/config /mnt/user/appdata/openclaw/auth-secret /mnt/user/backup/openclaw
+   chown -R 1000:1000 /mnt/user/appdata/openclaw /mnt/user/claw /mnt/user/backup/openclaw
+   chmod 700 /mnt/user/backup/openclaw
    ```
+
+   Keep the backup dir mode 700. The archives in it hold every credential the gateway
+   has (see [Backups](#backups)).
 
    Also fetch the 1Password CLI binary the compose file bind-mounts into the
    container — **before first start**; if the file is missing at `up` time,
@@ -245,6 +249,9 @@ Config tab: `browser.enabled: true`, `browser.noSandbox: true`, and `tools.alsoA
   keeps its cookies and logins under `config/browser/openclaw/user-data` on the config
   mount, so they survive restarts and image updates (delete that directory with the stack
   stopped to reset it).
+- `browser.extensionRelay.allowLegacyAuth: false`. Legacy relay auth only serves
+  Chrome-extension and external CDP clients, and this stack pairs none; doctor warns
+  while it is on.
 
 Verify with a prompt that uses the browser *without* naming a profile, then `docker exec
 openclaw openclaw browser --json status`: the `openclaw` profile should be the running
@@ -265,6 +272,10 @@ Members** privileged intents. Its presence shows offline by design — DM it any
 first DM returns a pairing code, approved at **Settings → Channels → DM access
 requests**. Pairings are stored in the state database, not the config.
 
+Set `agents.defaults.heartbeat.directPolicy: "block"`. Since 2026.9.8 heartbeat
+deliveries may target DMs unless this is set; `block` still runs the heartbeat turn but
+never DMs from it, and doctor warns while the key is unset.
+
 ### Gateway and public access
 
 Config tab, once the tunnel is up. `bind: lan` makes origin and rate-limit settings
@@ -281,10 +292,24 @@ saving anything under `controlUi`, check `gateway.controlUi.enabled` is still tr
 the dashboard still loads; a write there has been seen to leave it `false`.
 
 Then `docker exec openclaw openclaw security audit` should come back with zero criticals.
-Expected warnings: the unpinned npm specs for `codex` and `discord` (unpinned is what
-lets `plugins update` track the image version, so leave them), and the Discord
-multi-user heuristic, which drops to a note once the guild has a `users` restriction
-(see [Discord](#discord)).
+Expected warnings:
+
+- The unpinned npm specs for `codex` and `discord`. Unpinned is what lets `plugins
+  update` track the image version, so leave them.
+- The multi-user heuristic. It fires on the Discord guild allowlist together with exec
+  and file tools running unsandboxed, and it stays a warning even with the guild's `users`
+  restriction set (see [Discord](#discord)).
+- `tools.exec.agent_skill_mcp_boundary_drift`: the agent's shell can reach the
+  `mcp.servers` entries (Fastmail) directly, whatever skill allowlists say. That is the
+  same "the container is the boundary" position as [Codex harness](#codex-harness)'s
+  `yolo` mode, and with one agent there is no per-agent isolation to lose.
+
+`openclaw doctor` warns about two more things, both accepted: the `lan` bind (required, see
+above), and plaintext secrets in `openclaw.json` (`models.providers.anthropic.apiKey`,
+`channels.discord.token`). Moving those to SecretRefs doesn't keep them from the agent
+here. The shared secret store keeps values unencrypted in `state/openclaw.sqlite`, next to
+the OAuth profiles, and a 1Password exec provider would read the same vault the agent's
+`op` CLI can.
 
 ### MCP servers
 
@@ -334,6 +359,53 @@ the plugin has been seen exporting metrics but no spans at all; if Tempo search 
 empty while metrics arrive, that is the bug, not the config. A separate
 `diagnostics-prometheus` plugin exposes a pull endpoint with gateway-level counters
 instead; it is independent of this one and not wired up.
+
+### Backups
+
+A gateway automation runs `openclaw backup create --verify` daily into
+`/home/node/backups` (the `${BACKUP}/openclaw` bind mount) and keeps 14 days of archives.
+It is a command job, so the scheduler runs it directly with no agent turn. Create it once;
+it lives in the state database, so it survives image updates and is itself in every
+archive:
+
+```sh
+docker exec openclaw openclaw automations create --cron "0 4 * * *" --name "Full backup" \
+  --timeout-seconds 1800 --no-deliver \
+  --command "openclaw backup create --output /home/node/backups --verify && find /home/node/backups -maxdepth 1 -name '*-openclaw-backup.tar.gz' -mtime +14 -delete"
+```
+
+`openclaw automations run <job-id>` triggers it once, `automations runs <job-id>` shows
+its history, and `openclaw status` shows the latest backup on its `Backups` row. Pruning
+only runs after a verified archive, so a string of failures never deletes the last good
+ones. Failure alerts need a route, which is the global `cron.failureAlert` block in the
+Config tab. Without one, doctor's warning once no backup has succeeded in 14 days is the
+only signal.
+
+Each archive is the whole gateway: the state and agent databases, `openclaw.json`, auth
+profiles and the workspace. It skips `~/.openclaw/npm` as regenerable, which is where the
+npm-installed plugins live (`codex`, see [Codex harness](#codex-harness), and `discord`).
+Expect to reinstall them after a restore. Codex's own SQLite files under
+`agents/main/agent/codex-home/` are copied as raw bytes, without the live snapshot and
+integrity checks OpenClaw's databases get, so a restored copy of them can be torn; Codex
+thread history is the most that's at stake. The workspace and appdata are on cache and the
+backup share is on the array, so the archives survive losing the cache device.
+
+The mount is writable by the gateway user, and that is the user the agent's shell runs as.
+A misbehaving agent can delete the backups along with the state they protect. That is the
+cost of letting OpenClaw schedule its own backups.
+
+The archives are unredacted: the OAuth profiles, Discord token and Anthropic key are all
+in them, which is what lets a restore come back without re-pairing or re-login. That is
+why they live on the backup share, which is encrypted and not SMB-exported. Keep it that
+way.
+
+OpenClaw's built-in schedule, `backup enable`, writes a Git repository instead. It isn't
+used here because it covers the databases only, not the config or the workspace, and its
+history only grows.
+
+`openclaw backup verify <archive>` checks an archive, and `openclaw backup restore
+<archive> --target <dir>` unpacks one into a directory. A full restore over the live
+config mount hasn't been tried on this host.
 
 ## Codex harness
 
@@ -401,10 +473,21 @@ unavailable; leaving it `auto` is the documented route and is what the dashboard
   all — with the plugin enabled the catalog comes from upstream and stays current.
 - `openclaw doctor`'s `--only`, `--skip`, `--all` and `--severity-min` are **lint-only**
   flags: combining any of them with `--fix` exits non-zero. There is no supported way to
-  scope a repair. When `--fix` has to run, run it interactively (`-it`, without `--yes`)
-  and use its per-finding prompts as the control surface. `doctor --fix` also discards
-  *all* pending migrations if any plugin fails to load
-  ([openclaw#76798](https://github.com/openclaw/openclaw/issues/76798)).
+  scope a repair. When you run `--fix` by hand, run it interactively (`-it`, without
+  `--yes`) and use its per-finding prompts as the control surface. The image also runs it
+  unattended on every start (next item), so the prompts only help if you get there
+  before a restart does. `doctor --fix` also discards *all* pending migrations if any
+  plugin fails to load ([openclaw#76798](https://github.com/openclaw/openclaw/issues/76798)).
+- Since 2026.9.8 the image entrypoint runs `openclaw doctor --fix --non-interactive`
+  before every gateway start, and the gateway doesn't listen until it exits. After a
+  version jump with database migrations that took ~14 minutes here (9.6 → 9.8): `docker
+  logs` showed only `┌  OpenClaw doctor`, the LAN port refused connections and the tunnel
+  returned 503. While `docker stats openclaw` shows CPU and the files under
+  `config/state/` and `config/agents/main/agent/` keep changing, wait. Don't kill it
+  mid-migration; an interrupted migration can leave the databases refusing every opener
+  ([openclaw#162895](https://github.com/openclaw/openclaw/issues/162895)). The
+  `latest-browser` tag pulls whatever is current when the stack is recreated, so any
+  recreate can set this off.
 - `openclaw memory status --deep` can report `Unknown memory embedding provider: ollama`
   even while `memory_search` works fine at runtime
   ([openclaw#66077](https://github.com/openclaw/openclaw/issues/66077)) — a
