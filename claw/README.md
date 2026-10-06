@@ -292,10 +292,17 @@ saving anything under `controlUi`, check `gateway.controlUi.enabled` is still tr
 the dashboard still loads; a write there has been seen to leave it `false`.
 
 Then `docker exec openclaw openclaw security audit` should come back with zero criticals.
-Expected warnings: the unpinned npm specs for `codex` and `discord` (unpinned is what
-lets `plugins update` track the image version, so leave them), and the Discord
-multi-user heuristic, which drops to a note once the guild has a `users` restriction
-(see [Discord](#discord)).
+Expected warnings:
+
+- The unpinned npm specs for `codex` and `discord`. Unpinned is what lets `plugins
+  update` track the image version, so leave them.
+- The multi-user heuristic. It fires on the Discord guild allowlist together with exec
+  and file tools running unsandboxed, and it stays a warning even with the guild's `users`
+  restriction set (see [Discord](#discord)).
+- `tools.exec.agent_skill_mcp_boundary_drift`: the agent's shell can reach the
+  `mcp.servers` entries (Fastmail) directly, whatever skill allowlists say. That is the
+  same "the container is the boundary" position as [Codex harness](#codex-harness)'s
+  `yolo` mode, and with one agent there is no per-agent isolation to lose.
 
 `openclaw doctor` warns about two more things, both accepted: the `lan` bind (required, see
 above), and plaintext secrets in `openclaw.json` (`models.providers.anthropic.apiKey`,
