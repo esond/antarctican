@@ -10,7 +10,7 @@ Each top-level directory is one independently-deployable stack via the Unraid Do
 |---|---|
 | [`claw/`](claw/) | Personal AI assistant: OpenClaw (Discord + Anthropic API), local embedding model, Cloudflare Tunnel |
 | [`media/`](media/) | Media management: sonarr / radarr / prowlarr, qBittorrent (VPN), SWAG reverse proxy, Seerr, Notifiarr, Unpackerr |
-| [`plex/`](plex/) | Plex, Tautulli, Tunarr |
+| [`plex/`](plex/) | Plex, Tautulli |
 | [`pihole/`](pihole/) | Pi-hole DNS |
 | [`notes/`](notes/) | Obsidian LiveSync setup (CouchDB) |
 | [`otel/`](otel/) | Observability: OpenTelemetry Collector, VictoriaMetrics, Tempo, Loki, Grafana |
