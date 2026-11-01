@@ -16,6 +16,7 @@ Each top-level directory is one independently-deployable stack via the Unraid Do
 | [`otel/`](otel/) | Observability: OpenTelemetry Collector, VictoriaMetrics, Tempo, Loki, Grafana |
 | [`urbackup/`](urbackup/) | UrBackup server |
 | [`utils/`](utils/) | Krusader |
+| [`github-runner/`](github-runner/) | Self-hosted GitHub Actions runner with a private Docker daemon |
 | [`user-scripts/`](user-scripts/) | Shell/Python scripts for the User Scripts plugin (not compose) |
 
 ## Conventions

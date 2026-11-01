@@ -1,0 +1,77 @@
+services:
+  dind:
+    image: docker:dind
+    container_name: github-runner-dind
+    privileged: true
+    environment:
+      - TZ=${TZ}
+      - DOCKER_TLS_CERTDIR=
+    # Naming dockerd skips the image entrypoint's default listeners. With only a
+    # flag it also binds 0.0.0.0:2375, which collides with this address and kills
+    # the daemon. --tls=false is the explicit opt-out dockerd's deprecation notice
+    # asks for.
+    # The socket is for containers that mount it, like Testcontainers' Ryuk and
+    # container jobs; without it Docker creates a directory at that path.
+    command: ["dockerd", "--host=tcp://127.0.0.1:2375", "--host=unix:///var/run/docker.sock", "--tls=false"]
+    networks:
+      - github-runner-net
+    volumes:
+      - github-runner-docker:/var/lib/docker
+      # Same path as the runner, because the daemon resolves job bind mounts.
+      - github-runner-work:/home/runner/_work
+      # Filled by entrypoint.sh, because container jobs bind-mount this path.
+      - github-runner-externals:/home/runner/externals:ro
+    healthcheck:
+      test: ["CMD", "docker", "--host=tcp://127.0.0.1:2375", "info"]
+      interval: 10s
+      timeout: 5s
+      retries: 12
+    logging:
+      driver: json-file
+      options:
+        max-size: 10m
+        max-file: "3"
+    restart: unless-stopped
+
+  runner:
+    image: ghcr.io/actions/actions-runner:latest
+    container_name: github-runner
+    # Testcontainers and Aspire expect published ports on localhost.
+    network_mode: service:dind
+    depends_on:
+      dind:
+        condition: service_healthy
+    entrypoint: ["/bin/bash", "/entrypoint.sh"]
+    environment:
+      - TZ=${TZ}
+      - RUNNER_URL=${RUNNER_URL}
+      - GITHUB_PAT=${GITHUB_PAT}
+      - RUNNER_NAME=${RUNNER_NAME}
+      - RUNNER_LABELS=${RUNNER_LABELS}
+      - DOCKER_HOST=tcp://127.0.0.1:2375
+      # actions/setup-dotnet v6.0.0 defaults to the unwritable /usr/share/dotnet
+      # with no fallback.
+      - DOTNET_INSTALL_DIR=/home/runner/.dotnet
+    volumes:
+      - ${APPDATA}/github-runner/entrypoint.sh:/entrypoint.sh:ro
+      - github-runner-work:/home/runner/_work
+      - github-runner-externals:/mnt/externals
+    # The runner logs jobs to stdout, and a restart keeps the same log file.
+    logging:
+      driver: json-file
+      options:
+        max-size: 10m
+        max-file: "3"
+    restart: unless-stopped
+    labels:
+      net.unraid.docker.shell: 'bash'
+
+networks:
+  github-runner-net:
+    driver: bridge
+
+# Named volumes because overlay2 can't run on Unraid's /mnt/user (shfs).
+volumes:
+  github-runner-docker:
+  github-runner-work:
+  github-runner-externals:
