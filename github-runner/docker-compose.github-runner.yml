@@ -32,6 +32,8 @@ services:
         max-size: 10m
         max-file: "3"
     restart: unless-stopped
+    labels:
+      net.unraid.docker.icon: "https://avatars.githubusercontent.com/u/5429470?s=200&v=4"
 
   runner:
     image: ghcr.io/actions/actions-runner:latest
@@ -64,6 +66,7 @@ services:
         max-file: "3"
     restart: unless-stopped
     labels:
+      net.unraid.docker.icon: "https://avatars.githubusercontent.com/u/9919?s=200&v=4"
       net.unraid.docker.shell: 'bash'
 
 networks:
