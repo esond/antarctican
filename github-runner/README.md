@@ -74,6 +74,10 @@ root on the host and the PAT.
 - **One scope by default.** Every pair registers at `RUNNER_URL`. For a second scope, set
   `RUNNER_URL` on one pair after its `<<: *runner-env` line, plus `GITHUB_PAT` if the PAT
   doesn't cover that scope.
+- **Runner groups, if this moves to org scope.** Repo-scoped runners don't use groups. At org
+  scope, a group limits which repos can use the runners. Add `--runnergroup <name>` to
+  `config.sh` in `entrypoint.sh`, because a runner moved in GitHub's UI returns to the default
+  group the next time it registers. Check that your plan allows custom groups first.
 - **Resource limits.** `cpu_shares` makes runners yield CPU to Plex and other stacks only when
   the host is busy. `mem_limit` caps each `dind` and each runner at 6 GB, so a job over the
   limit is killed. Change both in `x-dind` and `x-runner`, which apply to every pair.
