@@ -1,73 +1,139 @@
-services:
-  dind:
-    image: docker:dind
-    container_name: github-runner-dind
-    privileged: true
-    environment:
-      - TZ=${TZ}
-      - DOCKER_TLS_CERTDIR=
-    # Naming dockerd skips the image entrypoint's default listeners. With only a
-    # flag it also binds 0.0.0.0:2375, which collides with this address and kills
-    # the daemon. --tls=false is the explicit opt-out dockerd's deprecation notice
-    # asks for.
-    # The socket is for containers that mount it, like Testcontainers' Ryuk and
-    # container jobs; without it Docker creates a directory at that path.
-    command: ["dockerd", "--host=tcp://127.0.0.1:2375", "--host=unix:///var/run/docker.sock", "--tls=false"]
-    networks:
-      - github-runner-net
-    volumes:
-      - github-runner-docker:/var/lib/docker
-      # Same path as the runner, because the daemon resolves job bind mounts.
-      - github-runner-work:/home/runner/_work
-      # Filled by entrypoint.sh, because container jobs bind-mount this path.
-      - github-runner-externals:/home/runner/externals:ro
-    healthcheck:
-      test: ["CMD", "docker", "--host=tcp://127.0.0.1:2375", "info"]
-      interval: 10s
-      timeout: 5s
-      retries: 12
-    logging:
-      driver: json-file
-      options:
-        max-size: 10m
-        max-file: "3"
-    restart: unless-stopped
-    labels:
-      net.unraid.docker.icon: "https://avatars.githubusercontent.com/u/5429470?s=200&v=4"
+# One runner runs one job at a time, so each pair below is one parallel job. A job
+# can't share a daemon: the entrypoint removes every container on its daemon, and
+# jobs would collide on localhost ports.
+x-dind: &dind
+  image: docker:dind
+  privileged: true
+  # Default is 1024, so Plex and other stacks win the CPU when the host is busy.
+  # Runners can still use every idle core.
+  cpu_shares: 128
+  # Job containers count against this limit, and plain run: steps against the
+  # runner's.
+  mem_limit: 6g
+  environment:
+    - TZ=${TZ}
+    - DOCKER_TLS_CERTDIR=
+  # Naming dockerd skips the image entrypoint's default listeners. With only a
+  # flag it also binds 0.0.0.0:2375, which collides with this address and kills
+  # the daemon. --tls=false is the explicit opt-out dockerd's deprecation notice
+  # asks for.
+  # The socket is for containers that mount it, like Testcontainers' Ryuk and
+  # container jobs; without it Docker creates a directory at that path.
+  command: ["dockerd", "--host=tcp://127.0.0.1:2375", "--host=unix:///var/run/docker.sock", "--tls=false"]
+  networks:
+    - github-runner-net
+  healthcheck:
+    test: ["CMD", "docker", "--host=tcp://127.0.0.1:2375", "info"]
+    interval: 10s
+    timeout: 5s
+    retries: 12
+  logging:
+    driver: json-file
+    options:
+      max-size: 10m
+      max-file: "3"
+  restart: unless-stopped
+  labels:
+    net.unraid.docker.icon: "https://avatars.githubusercontent.com/u/5429470?s=200&v=4"
 
-  runner:
-    image: ghcr.io/actions/actions-runner:latest
-    container_name: github-runner
+x-runner: &runner
+  image: ghcr.io/actions/actions-runner:latest
+  cpu_shares: 128
+  mem_limit: 6g
+  entrypoint: ["/bin/bash", "/entrypoint.sh"]
+  # The runner logs jobs to stdout, and a restart keeps the same log file.
+  logging:
+    driver: json-file
+    options:
+      max-size: 10m
+      max-file: "3"
+  restart: unless-stopped
+  labels:
+    net.unraid.docker.icon: "https://avatars.githubusercontent.com/u/9919?s=200&v=4"
+    net.unraid.docker.shell: 'bash'
+
+x-runner-env: &runner-env
+  TZ: ${TZ}
+  RUNNER_URL: ${RUNNER_URL}
+  GITHUB_PAT: ${GITHUB_PAT}
+  RUNNER_LABELS: ${RUNNER_LABELS}
+  DOCKER_HOST: tcp://127.0.0.1:2375
+  # actions/setup-dotnet v6.0.0 defaults to the unwritable /usr/share/dotnet
+  # with no fallback.
+  DOTNET_INSTALL_DIR: /home/runner/.dotnet
+
+services:
+  dind-1:
+    <<: *dind
+    container_name: github-runner-dind-1
+    volumes:
+      - github-runner-docker-1:/var/lib/docker
+      # Same path as the runner, because the daemon resolves job bind mounts.
+      - github-runner-work-1:/home/runner/_work
+      # Filled by entrypoint.sh, because container jobs bind-mount this path.
+      - github-runner-externals-1:/home/runner/externals:ro
+
+  runner-1:
+    <<: *runner
+    container_name: github-runner-1
     # Testcontainers and Aspire expect published ports on localhost.
-    network_mode: service:dind
+    network_mode: service:dind-1
     depends_on:
-      dind:
+      dind-1:
         condition: service_healthy
-    entrypoint: ["/bin/bash", "/entrypoint.sh"]
     environment:
-      - TZ=${TZ}
-      - RUNNER_URL=${RUNNER_URL}
-      - GITHUB_PAT=${GITHUB_PAT}
-      - RUNNER_NAME=${RUNNER_NAME}
-      - RUNNER_LABELS=${RUNNER_LABELS}
-      - DOCKER_HOST=tcp://127.0.0.1:2375
-      # actions/setup-dotnet v6.0.0 defaults to the unwritable /usr/share/dotnet
-      # with no fallback.
-      - DOTNET_INSTALL_DIR=/home/runner/.dotnet
+      <<: *runner-env
+      RUNNER_NAME: ${RUNNER_NAME}-1
     volumes:
       - ${APPDATA}/github-runner/entrypoint.sh:/entrypoint.sh:ro
-      - github-runner-work:/home/runner/_work
-      - github-runner-externals:/mnt/externals
-    # The runner logs jobs to stdout, and a restart keeps the same log file.
-    logging:
-      driver: json-file
-      options:
-        max-size: 10m
-        max-file: "3"
-    restart: unless-stopped
-    labels:
-      net.unraid.docker.icon: "https://avatars.githubusercontent.com/u/9919?s=200&v=4"
-      net.unraid.docker.shell: 'bash'
+      - github-runner-work-1:/home/runner/_work
+      - github-runner-externals-1:/mnt/externals
+
+  dind-2:
+    <<: *dind
+    container_name: github-runner-dind-2
+    volumes:
+      - github-runner-docker-2:/var/lib/docker
+      - github-runner-work-2:/home/runner/_work
+      - github-runner-externals-2:/home/runner/externals:ro
+
+  runner-2:
+    <<: *runner
+    container_name: github-runner-2
+    network_mode: service:dind-2
+    depends_on:
+      dind-2:
+        condition: service_healthy
+    environment:
+      <<: *runner-env
+      RUNNER_NAME: ${RUNNER_NAME}-2
+    volumes:
+      - ${APPDATA}/github-runner/entrypoint.sh:/entrypoint.sh:ro
+      - github-runner-work-2:/home/runner/_work
+      - github-runner-externals-2:/mnt/externals
+
+  dind-3:
+    <<: *dind
+    container_name: github-runner-dind-3
+    volumes:
+      - github-runner-docker-3:/var/lib/docker
+      - github-runner-work-3:/home/runner/_work
+      - github-runner-externals-3:/home/runner/externals:ro
+
+  runner-3:
+    <<: *runner
+    container_name: github-runner-3
+    network_mode: service:dind-3
+    depends_on:
+      dind-3:
+        condition: service_healthy
+    environment:
+      <<: *runner-env
+      RUNNER_NAME: ${RUNNER_NAME}-3
+    volumes:
+      - ${APPDATA}/github-runner/entrypoint.sh:/entrypoint.sh:ro
+      - github-runner-work-3:/home/runner/_work
+      - github-runner-externals-3:/mnt/externals
 
 networks:
   github-runner-net:
@@ -75,6 +141,12 @@ networks:
 
 # Named volumes because overlay2 can't run on Unraid's /mnt/user (shfs).
 volumes:
-  github-runner-docker:
-  github-runner-work:
-  github-runner-externals:
+  github-runner-docker-1:
+  github-runner-work-1:
+  github-runner-externals-1:
+  github-runner-docker-2:
+  github-runner-work-2:
+  github-runner-externals-2:
+  github-runner-docker-3:
+  github-runner-work-3:
+  github-runner-externals-3:
