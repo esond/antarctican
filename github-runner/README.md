@@ -81,6 +81,8 @@ root on the host and the PAT.
 - **Resource limits.** `cpu_shares` makes runners yield CPU to Plex and other stacks only when
   the host is busy. `mem_limit` caps each `dind` at 6 GB and each runner at 10 GB, so a job over
   the limit is killed. Change them in `x-dind` and `x-runner`, which apply to every pair.
+- **DNS skips Pi-hole.** `x-dind` sets public resolvers. Every container on the host reaches
+  Pi-hole as one client, so a large restore can hit its rate limit and fail DNS for all of them.
 - **Each pair has its own image cache.** GitHub gives a job to any idle runner, so an image
   can be pulled once per pair, and each copy uses vdisk space.
 - **Each job starts clean, with exceptions.** The runner is ephemeral: it exits after one

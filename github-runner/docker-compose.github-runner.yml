@@ -10,6 +10,12 @@ x-dind: &dind
   # Job containers count against this limit, and plain run: steps against the
   # runner's.
   mem_limit: 6g
+  # Public resolvers, the upstreams Pi-hole already uses. Through Pi-hole, a restore
+  # hit its per-client rate limit, which every container on the host shares. Runners
+  # share this network namespace, so they use these too.
+  dns:
+    - 9.9.9.9
+    - 149.112.112.112
   environment:
     - TZ=${TZ}
     - DOCKER_TLS_CERTDIR=
