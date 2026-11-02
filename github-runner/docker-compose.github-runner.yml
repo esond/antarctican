@@ -39,7 +39,7 @@ x-dind: &dind
 x-runner: &runner
   image: ghcr.io/actions/actions-runner:latest
   cpu_shares: 128
-  mem_limit: 6g
+  mem_limit: 10g
   entrypoint: ["/bin/bash", "/entrypoint.sh"]
   # The runner logs jobs to stdout, and a restart keeps the same log file.
   logging:

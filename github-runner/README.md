@@ -79,8 +79,8 @@ root on the host and the PAT.
   `config.sh` in `entrypoint.sh`, because a runner moved in GitHub's UI returns to the default
   group the next time it registers. Check that your plan allows custom groups first.
 - **Resource limits.** `cpu_shares` makes runners yield CPU to Plex and other stacks only when
-  the host is busy. `mem_limit` caps each `dind` and each runner at 6 GB, so a job over the
-  limit is killed. Change both in `x-dind` and `x-runner`, which apply to every pair.
+  the host is busy. `mem_limit` caps each `dind` at 6 GB and each runner at 10 GB, so a job over
+  the limit is killed. Change them in `x-dind` and `x-runner`, which apply to every pair.
 - **Each pair has its own image cache.** GitHub gives a job to any idle runner, so an image
   can be pulled once per pair, and each copy uses vdisk space.
 - **Each job starts clean, with exceptions.** The runner is ephemeral: it exits after one
