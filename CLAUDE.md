@@ -43,6 +43,7 @@ When adding a new stack, follow the same shape: new dir, `docker-compose.<name>.
 Shell scripts intended to be pasted into the Unraid User Scripts plugin and run on a schedule (not via cron in this repo, not via compose).
 
 - `clean-empty-share-directories.sh` — prunes empty dirs across array disks for a given share. Ships with the `find ... -delete` line **commented out** as a safety default; uncomment when you actually want it to delete.
+- `claw-workspace-owner.sh` — runs at array start and chowns the `claw` share root back to `1000:1000` after Unraid resets it to `nobody:users`.
 - `qbittorrent-mover/` — pauses torrents on the cache mount, runs Unraid's `mover`, then resumes them. Setup is three steps documented in its README: install `qbittorrent-api` via pip (`install-qbittorrent-api.sh`), drop `mover.py` somewhere on the host, and schedule `orchestrator.sh`. The hardcoded creds/IP at the top of `orchestrator.sh` are placeholders — they're meant to be edited on the host, not committed.
 
 ## Editing workflow

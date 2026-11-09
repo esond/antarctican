@@ -46,8 +46,8 @@ OpenClaw runs as its upstream fixed user (`node`, UID 1000) — it doesn't honor
    them):
 
    ```sh
-   mkdir -p /mnt/user/appdata/openclaw/config /mnt/user/appdata/openclaw/auth-secret /mnt/user/backup/openclaw
-   chown -R 1000:1000 /mnt/user/appdata/openclaw /mnt/user/claw /mnt/user/backup/openclaw
+   mkdir -p /mnt/cache/appdata/openclaw/config /mnt/cache/appdata/openclaw/auth-secret /mnt/user/backup/openclaw
+   chown -R 1000:1000 /mnt/cache/appdata/openclaw /mnt/user/claw /mnt/user/backup/openclaw
    chmod 700 /mnt/user/backup/openclaw
    ```
 
@@ -59,11 +59,11 @@ OpenClaw runs as its upstream fixed user (`node`, UID 1000) — it doesn't honor
    Docker creates a directory in its place and the mount breaks:
 
    ```sh
-   mkdir -p /mnt/user/appdata/openclaw/bin
+   mkdir -p /mnt/cache/appdata/openclaw/bin
    curl -fsSL https://cache.agilebits.com/dist/1P/op2/pkg/v2.39.0/op_linux_amd64_v2.39.0.zip -o /tmp/op.zip
-   unzip -o /tmp/op.zip -d /mnt/user/appdata/openclaw/bin op
+   unzip -o /tmp/op.zip -d /mnt/cache/appdata/openclaw/bin op
    rm /tmp/op.zip
-   chmod 755 /mnt/user/appdata/openclaw/bin/op
+   chmod 755 /mnt/cache/appdata/openclaw/bin/op
    ```
 
    (`op` is a static binary, so a bind mount works across image updates; bump
@@ -82,8 +82,8 @@ OpenClaw runs as its upstream fixed user (`node`, UID 1000) — it doesn't honor
    docker run -it --rm \
      --env-file /boot/config/plugins/compose.manager/projects/claw/.env \
      -e XDG_CACHE_HOME=/home/node/.openclaw/cache \
-     -v /mnt/user/appdata/openclaw/config:/home/node/.openclaw \
-     -v /mnt/user/appdata/openclaw/auth-secret:/home/node/.config/openclaw \
+     -v /mnt/cache/appdata/openclaw/config:/home/node/.openclaw \
+     -v /mnt/cache/appdata/openclaw/auth-secret:/home/node/.config/openclaw \
      -v /mnt/user/claw:/home/node/.openclaw/workspace \
      ghcr.io/openclaw/openclaw:latest-browser \
      openclaw onboard --tui --gateway-token-ref-env OPENCLAW_GATEWAY_TOKEN --skip-daemon --skip-health
@@ -105,8 +105,8 @@ OpenClaw runs as its upstream fixed user (`node`, UID 1000) — it doesn't honor
    ```sh
    docker run --rm \
      -e XDG_CACHE_HOME=/home/node/.openclaw/cache \
-     -v /mnt/user/appdata/openclaw/config:/home/node/.openclaw \
-     -v /mnt/user/appdata/openclaw/auth-secret:/home/node/.config/openclaw \
+     -v /mnt/cache/appdata/openclaw/config:/home/node/.openclaw \
+     -v /mnt/cache/appdata/openclaw/auth-secret:/home/node/.config/openclaw \
      -v /mnt/user/claw:/home/node/.openclaw/workspace \
      ghcr.io/openclaw/openclaw:latest-browser \
      openclaw config set gateway.bind lan
