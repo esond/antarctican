@@ -9,7 +9,7 @@ x-dind: &dind
   cpu_shares: 128
   # Job containers count against this limit, and plain run: steps against the
   # runner's.
-  mem_limit: 6g
+  mem_limit: 4g
   # Public resolvers, the upstreams Pi-hole already uses. Through Pi-hole, a restore
   # hit its per-client rate limit, which every container on the host shares. Runners
   # share this network namespace, so they use these too.
@@ -45,7 +45,7 @@ x-dind: &dind
 x-runner: &runner
   image: ghcr.io/actions/actions-runner:latest
   cpu_shares: 128
-  mem_limit: 10g
+  mem_limit: 12g
   entrypoint: ["/bin/bash", "/entrypoint.sh"]
   # The runner logs jobs to stdout, and a restart keeps the same log file.
   logging:

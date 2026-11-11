@@ -79,7 +79,7 @@ root on the host and the PAT.
   `config.sh` in `entrypoint.sh`, because a runner moved in GitHub's UI returns to the default
   group the next time it registers. Check that your plan allows custom groups first.
 - **Resource limits.** `cpu_shares` makes runners yield CPU to Plex and other stacks only when
-  the host is busy. `mem_limit` caps each `dind` at 6 GB and each runner at 10 GB, so a job over
+  the host is busy. `mem_limit` caps each `dind` at 4 GB and each runner at 12 GB, so a job over
   the limit is killed. Change them in `x-dind` and `x-runner`, which apply to every pair.
 - **DNS skips Pi-hole.** `x-dind` sets public resolvers. Every container on the host reaches
   Pi-hole as one client, so a large restore can hit its rate limit and fail DNS for all of them.
