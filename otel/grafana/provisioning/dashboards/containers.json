@@ -21,7 +21,368 @@
   "links": [],
   "panels": [
     {
+      "id": 100,
+      "type": "row",
+      "title": "Totals",
+      "collapsed": false,
+      "gridPos": {
+        "x": 0,
+        "y": 0,
+        "w": 24,
+        "h": 1
+      },
+      "panels": []
+    },
+    {
       "id": 1,
+      "type": "timeseries",
+      "title": "Total memory",
+      "description": "Sum across the selected containers, next to the host's memory in use (excluding page cache). The host has 64 GB. Container usage counts some active file cache that the host's 'used' leaves out, so the containers line can sit above it.",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "victoriametrics"
+      },
+      "gridPos": {
+        "x": 0,
+        "y": 1,
+        "w": 12,
+        "h": 8
+      },
+      "targets": [
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "victoriametrics"
+          },
+          "editorMode": "code",
+          "expr": "sum(container_memory_usage_total_bytes{container_name=~\"$container\"})",
+          "legendFormat": "containers",
+          "refId": "A",
+          "range": true,
+          "instant": false
+        },
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "victoriametrics"
+          },
+          "editorMode": "code",
+          "expr": "sum(system_memory_usage_bytes{state=\"used\"})",
+          "legendFormat": "host used",
+          "refId": "B",
+          "range": true,
+          "instant": false
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "bytes",
+          "color": {
+            "mode": "palette-classic"
+          },
+          "custom": {
+            "lineWidth": 1,
+            "fillOpacity": 10,
+            "showPoints": "never",
+            "spanNulls": false
+          },
+          "min": 0
+        },
+        "overrides": []
+      },
+      "options": {
+        "legend": {
+          "displayMode": "list",
+          "placement": "bottom",
+          "calcs": [
+            "max",
+            "lastNotNull"
+          ]
+        },
+        "tooltip": {
+          "mode": "multi",
+          "sort": "desc"
+        }
+      }
+    },
+    {
+      "id": 2,
+      "type": "timeseries",
+      "title": "Total CPU cores",
+      "description": "Cores in use summed across the selected containers, against the host's logical cores.",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "victoriametrics"
+      },
+      "gridPos": {
+        "x": 12,
+        "y": 1,
+        "w": 12,
+        "h": 8
+      },
+      "targets": [
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "victoriametrics"
+          },
+          "editorMode": "code",
+          "expr": "sum(rate(container_cpu_usage_nanoseconds_total{container_name=~\"$container\"}[$__rate_interval])) / 1e9",
+          "legendFormat": "containers",
+          "refId": "A",
+          "range": true,
+          "instant": false
+        },
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "victoriametrics"
+          },
+          "editorMode": "code",
+          "expr": "max(system_cpu_logical_count)",
+          "legendFormat": "host cores",
+          "refId": "B",
+          "range": true,
+          "instant": false
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "short",
+          "color": {
+            "mode": "palette-classic"
+          },
+          "custom": {
+            "lineWidth": 1,
+            "fillOpacity": 10,
+            "showPoints": "never",
+            "spanNulls": false
+          },
+          "min": 0
+        },
+        "overrides": [
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "host cores"
+            },
+            "properties": [
+              {
+                "id": "custom.lineStyle",
+                "value": {
+                  "fill": "dash",
+                  "dash": [
+                    10,
+                    10
+                  ]
+                }
+              },
+              {
+                "id": "custom.fillOpacity",
+                "value": 0
+              }
+            ]
+          }
+        ]
+      },
+      "options": {
+        "legend": {
+          "displayMode": "list",
+          "placement": "bottom",
+          "calcs": [
+            "max",
+            "lastNotNull"
+          ]
+        },
+        "tooltip": {
+          "mode": "multi",
+          "sort": "desc"
+        }
+      }
+    },
+    {
+      "id": 3,
+      "type": "timeseries",
+      "title": "Total network",
+      "description": "Summed across the selected containers. Receive above zero, transmit below. Containers sharing a network namespace (a runner and its dind) are counted twice.",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "victoriametrics"
+      },
+      "gridPos": {
+        "x": 0,
+        "y": 9,
+        "w": 12,
+        "h": 8
+      },
+      "targets": [
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "victoriametrics"
+          },
+          "editorMode": "code",
+          "expr": "sum(rate(container_network_io_usage_rx_bytes_total{container_name=~\"$container\"}[$__rate_interval]))",
+          "legendFormat": "rx",
+          "refId": "A",
+          "range": true,
+          "instant": false
+        },
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "victoriametrics"
+          },
+          "editorMode": "code",
+          "expr": "sum(rate(container_network_io_usage_tx_bytes_total{container_name=~\"$container\"}[$__rate_interval]))",
+          "legendFormat": "tx",
+          "refId": "B",
+          "range": true,
+          "instant": false
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "Bps",
+          "color": {
+            "mode": "palette-classic"
+          },
+          "custom": {
+            "lineWidth": 1,
+            "fillOpacity": 10,
+            "showPoints": "never",
+            "spanNulls": false
+          }
+        },
+        "overrides": [
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "tx"
+            },
+            "properties": [
+              {
+                "id": "custom.transform",
+                "value": "negative-Y"
+              }
+            ]
+          }
+        ]
+      },
+      "options": {
+        "legend": {
+          "displayMode": "list",
+          "placement": "bottom",
+          "calcs": [
+            "max",
+            "lastNotNull"
+          ]
+        },
+        "tooltip": {
+          "mode": "multi",
+          "sort": "desc"
+        }
+      }
+    },
+    {
+      "id": 4,
+      "type": "timeseries",
+      "title": "Total disk I/O",
+      "description": "Summed across the selected containers. Reads above zero, writes below.",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "victoriametrics"
+      },
+      "gridPos": {
+        "x": 12,
+        "y": 9,
+        "w": 12,
+        "h": 8
+      },
+      "targets": [
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "victoriametrics"
+          },
+          "editorMode": "code",
+          "expr": "sum(rate(container_blockio_io_service_bytes_recursive_total{container_name=~\"$container\", operation=\"read\"}[$__rate_interval]))",
+          "legendFormat": "read",
+          "refId": "A",
+          "range": true,
+          "instant": false
+        },
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "victoriametrics"
+          },
+          "editorMode": "code",
+          "expr": "sum(rate(container_blockio_io_service_bytes_recursive_total{container_name=~\"$container\", operation=\"write\"}[$__rate_interval]))",
+          "legendFormat": "write",
+          "refId": "B",
+          "range": true,
+          "instant": false
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "Bps",
+          "color": {
+            "mode": "palette-classic"
+          },
+          "custom": {
+            "lineWidth": 1,
+            "fillOpacity": 10,
+            "showPoints": "never",
+            "spanNulls": false
+          }
+        },
+        "overrides": [
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "write"
+            },
+            "properties": [
+              {
+                "id": "custom.transform",
+                "value": "negative-Y"
+              }
+            ]
+          }
+        ]
+      },
+      "options": {
+        "legend": {
+          "displayMode": "list",
+          "placement": "bottom",
+          "calcs": [
+            "max",
+            "lastNotNull"
+          ]
+        },
+        "tooltip": {
+          "mode": "multi",
+          "sort": "desc"
+        }
+      }
+    },
+    {
+      "id": 101,
+      "type": "row",
+      "title": "Per container",
+      "collapsed": false,
+      "gridPos": {
+        "x": 0,
+        "y": 17,
+        "w": 24,
+        "h": 1
+      },
+      "panels": []
+    },
+    {
+      "id": 5,
       "type": "bargauge",
       "title": "Memory now",
       "description": "Current memory use (excluding page cache), highest first.",
@@ -31,7 +392,7 @@
       },
       "gridPos": {
         "x": 0,
-        "y": 0,
+        "y": 18,
         "w": 8,
         "h": 10
       },
@@ -81,7 +442,7 @@
       }
     },
     {
-      "id": 2,
+      "id": 6,
       "type": "bargauge",
       "title": "Memory % of limit now",
       "description": "Current memory as a percent of the container's mem_limit. A container with no limit is measured against the whole host, so only limited containers get close to 100.",
@@ -91,7 +452,7 @@
       },
       "gridPos": {
         "x": 8,
-        "y": 0,
+        "y": 18,
         "w": 8,
         "h": 10
       },
@@ -151,7 +512,7 @@
       }
     },
     {
-      "id": 3,
+      "id": 7,
       "type": "bargauge",
       "title": "CPU now",
       "description": "CPU cores in use, averaged over the last 2 minutes. The host has 20 logical cores.",
@@ -161,7 +522,7 @@
       },
       "gridPos": {
         "x": 16,
-        "y": 0,
+        "y": 18,
         "w": 8,
         "h": 10
       },
@@ -213,7 +574,7 @@
       }
     },
     {
-      "id": 4,
+      "id": 8,
       "type": "timeseries",
       "title": "Memory",
       "description": "Memory use excluding page cache, with each limited container's mem_limit as a dashed line.",
@@ -223,7 +584,7 @@
       },
       "gridPos": {
         "x": 0,
-        "y": 10,
+        "y": 28,
         "w": 24,
         "h": 10
       },
@@ -309,7 +670,7 @@
       }
     },
     {
-      "id": 5,
+      "id": 9,
       "type": "timeseries",
       "title": "Memory % of limit",
       "description": "Memory as a percent of mem_limit. Containers with no limit are measured against the whole host.",
@@ -319,7 +680,7 @@
       },
       "gridPos": {
         "x": 0,
-        "y": 20,
+        "y": 38,
         "w": 12,
         "h": 10
       },
@@ -387,7 +748,7 @@
       }
     },
     {
-      "id": 6,
+      "id": 10,
       "type": "timeseries",
       "title": "CPU cores",
       "description": "CPU cores in use. The host has 20 logical cores.",
@@ -397,7 +758,7 @@
       },
       "gridPos": {
         "x": 12,
-        "y": 20,
+        "y": 38,
         "w": 12,
         "h": 10
       },
@@ -449,7 +810,7 @@
       }
     },
     {
-      "id": 7,
+      "id": 11,
       "type": "timeseries",
       "title": "Network",
       "description": "Receive above zero, transmit below. A GitHub runner shares its dind's network namespace, so the two show the same traffic.",
@@ -459,7 +820,7 @@
       },
       "gridPos": {
         "x": 0,
-        "y": 30,
+        "y": 48,
         "w": 12,
         "h": 10
       },
@@ -535,7 +896,7 @@
       }
     },
     {
-      "id": 8,
+      "id": 12,
       "type": "timeseries",
       "title": "Disk I/O",
       "description": "Block device reads above zero, writes below.",
@@ -545,7 +906,7 @@
       },
       "gridPos": {
         "x": 12,
-        "y": 30,
+        "y": 48,
         "w": 12,
         "h": 10
       },
