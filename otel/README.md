@@ -179,6 +179,7 @@ dashboard list groups them. All four are upstream dashboards imported and reboun
 | Arrs (scraparr) | `scraparr.json` | `media` | [22934](https://grafana.com/grafana/dashboards/22934) |
 | Pi-hole | `pihole.json` | `pihole` | [21043](https://grafana.com/grafana/dashboards/21043) |
 | UrBackup | `urbackup.json` | `urbackup` | exporter repo's `grafana/grafana_dashboard.json` |
+| Containers | `containers.json` | `otel` | written for this stack |
 
 Importing an upstream dashboard into this stack means two mechanical changes, the same
 ones `openclaw.json` got. An upstream file is built to be *imported through the UI*: it
@@ -231,8 +232,11 @@ Two things worth knowing:
   `openclaw.run.attempt`.
 - Host: any `hostmetrics`-receiver dashboard; the metric names are OpenTelemetry's
   (`system_*`), not node_exporter's (`node_*`), so node_exporter dashboards will not work.
-- Containers: `container_*` metrics from the `docker_stats` receiver, labelled by
-  `container_name`.
+- Containers (`containers.json`): `container_*` metrics from the `docker_stats` receiver,
+  labelled by `container_name`. No upstream dashboard reads these names, so this one is
+  written here. CPU comes from `rate(container_cpu_usage_nanoseconds_total)`, not
+  `container_cpu_utilization_ratio`: that gauge is a single sample, and during a CI run it
+  read 0.17 while the counter showed the same runner using 2.9 cores.
 
 ## Notes
 
